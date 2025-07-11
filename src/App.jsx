@@ -8,11 +8,11 @@ function App() {
   return (
     <Router>
       <div className="App" style={{ position: 'relative' }}>
-        {/* <Navigation /> */}
-          <Routes>
-            <Route path="/" element={<MotionDetection />} />
-            <Route path="/view" element={<MotionViewer />} />
-          </Routes>
+        <Navigation />
+        <Routes>
+          <Route path="/" element={<MotionDetection />} />
+          <Route path="/view" element={<MotionViewer />} />
+        </Routes>
       </div>
     </Router>
   )

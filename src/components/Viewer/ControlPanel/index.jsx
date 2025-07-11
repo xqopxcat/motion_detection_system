@@ -11,7 +11,7 @@ import AnnotationPanel from "../AnnotationPanel";
 const techStyles = {
     container: {
         position: 'fixed',
-        left: '20px',
+        left: '100px',
         top: '20px',
         height: 'calc(100vh - 60px)',
         width: '360px',
@@ -30,7 +30,7 @@ const techStyles = {
     },
     containerCollapsed: {
         position: 'fixed',
-        left: '20px',
+        left: '100px',
         top: '20px',
         width: '50px',
         height: '60px',

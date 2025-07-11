@@ -10,7 +10,7 @@ function Navigation() {
     left: '0',
     top: '0',
     height: '100vh',
-    width: isExpanded ? '200px' : '60px',
+    width: isExpanded ? '200px' : '40px',
     background: 'linear-gradient(180deg, rgba(10, 10, 10, 0.95) 0%, rgba(26, 26, 46, 0.95) 50%, rgba(22, 33, 62, 0.95) 100%)',
     borderRight: '2px solid rgba(0, 255, 255, 0.3)',
     backdropFilter: 'blur(15px)',
@@ -47,17 +47,15 @@ function Navigation() {
     margin: '60px 0 0 0',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px'
   }
 
   const linkStyle = {
     textDecoration: 'none',
     display: 'flex',
     alignItems: 'center',
-    padding: '12px 20px',
+    padding: '12px 5px',
     color: '#00ffff',
     transition: 'all 0.3s ease',
-    borderRadius: '0 25px 25px 0',
     margin: '0 0 0 0',
     fontSize: '14px',
     fontWeight: '500',
@@ -83,7 +81,6 @@ function Navigation() {
     ...linkStyle,
     backgroundColor: 'rgba(0, 255, 255, 0.2)',
     color: '#ffffff',
-    boxShadow: '0 0 15px rgba(0, 255, 255, 0.4)'
   }
 
   const getIcon = (path) => {
@@ -120,18 +117,7 @@ function Navigation() {
             <Link
               to="/"
               style={location.pathname === '/' ? activeLinkStyle : linkStyle}
-              onMouseEnter={(e) => {
-                if (location.pathname !== '/') {
-                  e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.1)'
-                  e.target.style.transform = 'translateX(5px)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== '/') {
-                  e.target.style.backgroundColor = 'transparent'
-                  e.target.style.transform = 'translateX(0)'
-                }
-              }}
+              
             >
               <span style={iconStyle}>{getIcon('/')}</span>
               <span style={textStyle}>Motion Detection</span>
@@ -141,18 +127,7 @@ function Navigation() {
             <Link
               to="/view"
               style={location.pathname === '/view' ? activeLinkStyle : linkStyle}
-              onMouseEnter={(e) => {
-                if (location.pathname !== '/view') {
-                  e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.1)'
-                  e.target.style.transform = 'translateX(5px)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (location.pathname !== '/view') {
-                  e.target.style.backgroundColor = 'transparent'
-                  e.target.style.transform = 'translateX(0)'
-                }
-              }}
+              
             >
               <span style={iconStyle}>{getIcon('/view')}</span>
               <span style={textStyle}>Motion Viewer</span>

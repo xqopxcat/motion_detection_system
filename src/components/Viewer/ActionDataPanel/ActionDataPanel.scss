@@ -9,7 +9,6 @@
     width: 400px;
     background: #222;
     color: #fff;
-    padding: 20px;
     z-index: 1000;
     border-radius: 8px 0 0 8px;
     box-shadow: -2px 0 8px rgba(0,0,0,0.2);
@@ -143,7 +142,7 @@
             overflow: hidden;     
             white-space: nowrap;  
             text-overflow: ellipsis;
-            width: 180px;
+            width: 120px;
         }
         .distance:hover::after {
             content: attr(data-full-text); /* 顯示完整文字 */

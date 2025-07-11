@@ -1,5 +1,7 @@
 .progress-slider-container {
-  margin-top: 18px;
+    display: flex;
+    margin-top: 18px;
+    justify-content: space-between;
 
   .progress-slider-label {
     font-weight: 500;

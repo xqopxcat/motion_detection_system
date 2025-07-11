@@ -26,7 +26,7 @@ export function highlightSelectedJoint(jointSpheres, selectedJointName, compared
 
 const MotionViewer = () => {
     const mountRef = useRef(null);
-    const [showControlPanel, setShowControlPanel] = useState(true); // 新增
+    const [showControlPanel, setShowControlPanel] = useState(false); // 預設收合狀態
     const [showActionPanel, setShowActionPanel] = useState(false);
     const [annotations, setAnnotations] = useState([]);
     const [speed, setSpeed] = useState(0.5);      // 控制播放速率

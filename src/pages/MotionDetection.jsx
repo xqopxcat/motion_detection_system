@@ -113,6 +113,7 @@ const PostDetection = () => {
             position: 'relative',
             zIndex: 1,
             width: 'calc(100% - 32px)',
+            marginLeft: '70px', // 避開 Navigation sidebar
             background: 'linear-gradient(145deg, rgba(13, 17, 31, 0.95), rgba(25, 39, 67, 0.9))',
             backdropFilter: 'blur(15px)',
             borderBottom: '1px solid rgba(0, 255, 255, 0.2)',
@@ -241,6 +242,7 @@ const PostDetection = () => {
             width: '100%',
             padding: 0,
             margin: 0,
+            marginLeft: '70px', // 避開 Navigation sidebar
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden'

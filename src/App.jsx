@@ -7,11 +7,12 @@ import MotionViewer from './pages/MotionViewer'
 function App() {
   return (
     <Router>
-      <div className="App">
-        <Routes>
-          <Route path="/" element={<MotionDetection />} />
-          <Route path="/view" element={<MotionViewer />} />
-        </Routes>
+      <div className="App" style={{ position: 'relative' }}>
+        {/* <Navigation /> */}
+          <Routes>
+            <Route path="/" element={<MotionDetection />} />
+            <Route path="/view" element={<MotionViewer />} />
+          </Routes>
       </div>
     </Router>
   )

@@ -1,0 +1,162 @@
+// =============================
+// ActionDataPanel 主要樣式
+// =============================
+.action-data-panel {
+    // 佈局與外觀
+    position: fixed;
+    top: 0px;
+    right: 0;
+    width: 400px;
+    background: #222;
+    color: #fff;
+    padding: 20px;
+    z-index: 1000;
+    border-radius: 8px 0 0 8px;
+    box-shadow: -2px 0 8px rgba(0,0,0,0.2);
+
+    // =============================
+    // 標題區塊
+    // =============================
+    .panel-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1.6em;
+        font-weight: bold;
+
+        // --- 折疊按鈕 ---
+        .toggle-panel-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1976d2 0%, #00eaff 100%);
+            box-shadow: 0 2px 8px rgba(30, 80, 180, 0.18), 0 0 0 2px rgba(0,234,255,0.10);
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: 
+                background 0.3s cubic-bezier(.4,2,.6,1),
+                box-shadow 0.2s,
+                transform 0.15s,
+                color 0.2s;
+            position: relative;
+            &:hover {
+                background: linear-gradient(135deg, #00eaff 0%, #1976d2 100%);
+                color: #fff;
+                box-shadow: 0 4px 16px rgba(0,234,255,0.22), 0 0 0 3px #00eaff44;
+                transform: scale(1.08);
+            }
+            &:active {
+                background: linear-gradient(135deg, #1976d2 0%, #00b8d9 100%);
+                color: #e0f7fa;
+                box-shadow: 0 1px 4px rgba(30,80,180,0.13);
+                transform: scale(0.96);
+            }
+            &::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: 50%;
+                pointer-events: none;
+                box-shadow: 0 0 8px 2px #00eaff55 inset;
+                opacity: 0.22;
+            }
+        }
+    }
+
+    // =============================
+    // 內容區塊
+    // =============================
+    .panel-content {
+        margin-top: 18px;
+        // --- 下拉選單美化 ---
+        select {
+            width: 100%;
+            padding: 8px 36px 8px 12px;
+            border-radius: 8px;
+            border: 1.5px solid #d1d3d6;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e2e4e6 100%);
+            color: #333;
+            font-size: 1.08em;
+            box-shadow: 0 1px 6px rgba(60,60,60,0.08);
+            appearance: none;
+            outline: none;
+            transition: border 0.2s, box-shadow 0.2s, background 0.3s;
+            margin-bottom: 10px;
+            position: relative;
+            &:hover {
+                border-color: #bfc2c6;
+                background: linear-gradient(135deg, #ffffff 0%, #e2e4e6 100%);
+            }
+            &:focus {
+                border-color: #888;
+                box-shadow: 0 0 0 2px #bfc2c655;
+                background: #fff;
+            }
+            option {
+                background: #fff;
+                color: #222;
+            }
+        }
+    }
+
+    // =============================
+    // 關節選擇區塊
+    // =============================
+    .joint-selector {
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        select {
+            flex: 1 1 0;
+            min-width: 0;
+            margin-bottom: 0;
+        }
+        .select-joint {
+            color: #00FFFF;
+            white-space: nowrap;
+            font-size: 1em;
+        }
+        .compared-joint {
+            color: #FFFF00;
+            white-space: nowrap;
+            font-size: 1em;
+        }
+    }
+
+    // =============================
+    // 資料列區塊
+    // =============================
+    .data-row {
+        display: flex;
+        align-items: baseline;
+        margin-bottom: 10px;
+        strong {
+            display: inline-block;
+            max-width: 100%;      
+            overflow: hidden;     
+            white-space: nowrap;  
+            text-overflow: ellipsis;
+            width: 180px;
+        }
+        .distance:hover::after {
+            content: attr(data-full-text); /* 顯示完整文字 */
+            position: absolute;
+            top: 100%; /* 顯示在元素下方 */
+            left: 0;
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 10;
+            font-size: 12px;
+        }
+    }
+}

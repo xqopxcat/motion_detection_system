@@ -1,0 +1,18 @@
+.progress-slider-container {
+  margin-top: 18px;
+
+  .progress-slider-label {
+    font-weight: 500;
+  }
+
+  .progress-slider-value {
+    color: #1976d2;
+  }
+
+  .progress-slider-input {
+    width: 180px;
+    margin-left: 12px;
+    accent-color: #1976d2;
+    vertical-align: middle;
+  }
+}

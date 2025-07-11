@@ -1,0 +1,28 @@
+.frame-display {
+  margin: 12px 0;
+  font-size: 1.08em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  padding: 7px 0px;
+  min-width: 120px;
+
+  .frame-label {
+    font-weight: 700;
+    font-size: 1.08em;
+    letter-spacing: 0.2px;
+    margin-right: 4px;
+  }
+
+  .frame-value {
+    color: hsl(230, 33%, 21%);
+    font-weight: 800;
+    padding: 3px 16px;
+    font-size: 1.12em;
+    letter-spacing: 0.7px;
+    margin-left: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+}

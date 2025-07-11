@@ -1,0 +1,39 @@
+.frame-jump-input-container {
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .frame-jump-label {
+    font-weight: 600;
+    font-size: 1.08em;
+    letter-spacing: 0.2px;
+  }
+
+  .frame-jump-input {
+    width: 90px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #b0bec5;
+    background: #f8fafc;
+    color: #222;
+    font-size: 1.08em;
+    font-weight: 500;
+    box-shadow: 0 1px 6px #1976d211 inset;
+    transition: border 0.18s, box-shadow 0.18s, background 0.22s;
+    outline: none;
+    &:hover {
+      border-color: #1976d2;
+      background: #e3f2fd;
+    }
+    &:focus {
+      border-color: #1976d2;
+      background: #fff;
+      box-shadow: 0 0 0 2px #90caf955;
+    }
+    &::placeholder {
+      color: #90a4ae;
+      opacity: 1;
+    }
+  }
+}

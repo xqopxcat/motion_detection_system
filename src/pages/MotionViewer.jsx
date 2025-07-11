@@ -40,11 +40,11 @@ const MotionViewer = () => {
     const [joints, setJoints] = useState([]); // 用於存儲骨架關節
     const [selectedJoint, setSelectedJoint] = useState('');
     const [comparedJoint, setComparedJoint] = useState('');
-    
+     
     // 新增影片相關狀態
     const [videoSrc, setVideoSrc] = useState(null);
     const [showVideoPanel, setShowVideoPanel] = useState(false);
-    
+
     const [currentFrameData, setCurrentFrameData] = useState({
         angle: 0,
         angleX: 0,
@@ -154,7 +154,7 @@ const MotionViewer = () => {
 
         // Landmark 加載
         loadLandmarkAndInitSkeleton({
-            landmarkUrl: '/landmark_data_with_heel.json',
+            landmarkUrl: '/pose_landmarks_2025-07-09T12-54-47.json',
             scene,
             camera,
             renderer,
@@ -207,38 +207,19 @@ const MotionViewer = () => {
 
         // 處理視窗大小調整
         const handleResize = () => {
-            if (mountRef.current) {
-                const rect = mountRef.current.getBoundingClientRect();
-                camera.aspect = rect.width / rect.height;
-                camera.updateProjectionMatrix();
-                renderer.setSize(rect.width, rect.height);
-            }
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         };
-        
-        // 初始設置大小
-        handleResize();
-        
         window.addEventListener('resize', handleResize);
-        
-        // 使用 ResizeObserver 監聽容器大小變化
-        const resizeObserver = new ResizeObserver(() => {
-            handleResize();
-        });
-        
-        if (mountRef.current) {
-            resizeObserver.observe(mountRef.current);
-        }
 
         return () => {
             if (scene.userData.angleArrowHelper) {
                 scene.remove(scene.userData.angleArrowHelper);
                 scene.userData.angleArrowHelper = null;
             }
-            if (mountRef.current && renderer.domElement) {
-                mountRef.current.removeChild(renderer.domElement);
-            }
+            mount.removeChild(renderer.domElement);
             window.removeEventListener('resize', handleResize);
-            resizeObserver.disconnect();
         };
     }, []);
     
@@ -251,8 +232,8 @@ const MotionViewer = () => {
             setFrameStep(false);
         }
     }, [frameStep, frameNumber]);
-    
-    const handleRemoveVideo = () => {
+
+        const handleRemoveVideo = () => {
         setVideoSrc(null);
     };
     

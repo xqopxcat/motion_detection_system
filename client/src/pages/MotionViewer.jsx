@@ -7,7 +7,9 @@ import ControlPanel from "../components/Viewer/ControlPanel";
 import ActionDataPanel from "../components/Viewer/ActionDataPanel";
 import VideoPanel from "../components/Viewer/VideoPanel";
 import PanelLayout from "../components/Viewer/PanelLayout";
-import { loadBVHAndInitSkeleton, loadFBXAndInitSkeleton, loadLandmarkAndInitSkeleton } from "../scenes/loadFile";
+// import { loadBVHAndInitSkeleton, loadFBXAndInitSkeleton, loadLandmarkAndInitSkeleton } from "../scenes/loadFile";
+import { fetchLandmark } from "../scenes/loadData";
+import { useGetMotionDetailsQuery, useGetMotionsQuery } from "../../redux/services/motionCoreAPI";
 
 const boneMeshes = [];
 const jointSpheres = [];
@@ -68,9 +70,10 @@ const MotionViewer = () => {
     const comparedJointRef = useRef('');
     const hipsPositionsRef = useRef([]);
 
+    const { data : motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery('a792aa47-1a12-4377-b929-ce2bf53fadda');
     
     useEffect(() => {
-        isPausedRef.current = isPaused;
+      isPausedRef.current = isPaused;
     }, [isPaused]);
 
     useEffect(() => {
@@ -95,66 +98,11 @@ const MotionViewer = () => {
         cameraRef.current = camera;
         addLights(scene);
         addFloor(scene);
-
-        // 選擇要加載的數據類型（三選一）
         
-        // BVH 加載
-        // loadBVHAndInitSkeleton({
-        //     bvhUrl: '/pirouette.bvh',
-        //     scene,
-        //     camera,
-        //     renderer,
-        //     setJoints,
-        //     setSelectedJoint,
-        //     setComparedJoint,
-        //     boneMeshes,
-        //     jointSpheres,
-        //     jointMapRef,
-        //     setAnnotations,
-        //     setIsBVHLoaded,
-        //     setProgress,
-        //     setFrameNumber,
-        //     setCurrentFrameData,
-        //     mixerRef,
-        //     frameRef,
-        //     isPausedRef,
-        //     speedRef,
-        //     selectedJointRef,
-        //     comparedJointRef,
-        //     hipsPositionsRef,
-        //     animate,
-        // });
-        
-        // FBX 加載
-        // loadFBXAndInitSkeleton({
-        //     fbxUrl: '/Freehang_Climb.fbx',
-        //     scene,
-        //     camera,
-        //     renderer,
-        //     setJoints,
-        //     setSelectedJoint,
-        //     setComparedJoint,
-        //     boneMeshes,
-        //     jointSpheres,
-        //     jointMapRef,
-        //     setAnnotations,
-        //     setIsFBXLoaded,
-        //     setProgress,
-        //     setFrameNumber,
-        //     setCurrentFrameData,
-        //     mixerRef,
-        //     frameRef,
-        //     isPausedRef,
-        //     speedRef,
-        //     selectedJointRef,
-        //     comparedJointRef,
-        //     hipsPositionsRef,
-        //     animate,
-        // });
-
-        // Landmark 加載
-        loadLandmarkAndInitSkeleton({
-            landmarkUrl: '/pose_landmarks_2025-07-09T12-54-47.json',
+        if (!isMotionsLoading && motionData) {
+          setVideoSrc(motionData?.data?.videoUrl);
+          fetchLandmark({
+            landmarkData: motionData?.data?.frameData,
             scene,
             camera,
             renderer,
@@ -177,9 +125,36 @@ const MotionViewer = () => {
             comparedJointRef,
             hipsPositionsRef,
             animate,
-        });
+          });
+        }
+
+        // Landmark 加載
+        // loadLandmarkAndInitSkeleton({
+        //     landmarkUrl: '/pose_landmarks_2025-07-09T12-54-47.json',
+        //     scene,
+        //     camera,
+        //     renderer,
+        //     setJoints,
+        //     setSelectedJoint,
+        //     setComparedJoint,
+        //     boneMeshes,
+        //     jointSpheres,
+        //     jointMapRef,
+        //     setAnnotations,
+        //     setIsLandmarkLoaded,
+        //     setProgress,
+        //     setFrameNumber,
+        //     setCurrentFrameData,
+        //     mixerRef,
+        //     frameRef,
+        //     isPausedRef,
+        //     speedRef,
+        //     selectedJointRef,
+        //     comparedJointRef,
+        //     hipsPositionsRef,
+        //     animate,
+        // });
         
-        // loadFBXAndInitSkeleton({
         //     fbxUrl: '/Freehang_Climb.fbx',
         //     scene,
         //     camera,
@@ -221,7 +196,7 @@ const MotionViewer = () => {
             mount.removeChild(renderer.domElement);
             window.removeEventListener('resize', handleResize);
         };
-    }, []);
+    }, [motionData, isMotionsLoading]);
     
     useEffect(() => {
         if (frameStep && mixerRef.current) {
@@ -233,7 +208,7 @@ const MotionViewer = () => {
         }
     }, [frameStep, frameNumber]);
 
-        const handleRemoveVideo = () => {
+    const handleRemoveVideo = () => {
         setVideoSrc(null);
     };
     
@@ -244,14 +219,6 @@ const MotionViewer = () => {
                 rightPanel={showVideoPanel ? (
                     <VideoPanel
                         videoSrc={videoSrc}
-                        onVideoFileChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                                const url = URL.createObjectURL(file);
-                                setVideoSrc(url);
-                            }
-                        }}
-                        onVideoRemove={handleRemoveVideo} 
                         onClose={() => setShowVideoPanel(false)}
                     />
                 ) : null}

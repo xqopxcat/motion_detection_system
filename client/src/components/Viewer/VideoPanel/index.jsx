@@ -254,7 +254,7 @@ const VideoPanel = ({
             <div style={techStyles.header} className="video-header">
                 <h3 style={techStyles.title}>影片面板</h3>
                 <div style={techStyles.headerButtons} className="header-buttons">
-                    {videoSrc && (
+                    {(videoSrc && onVideoRemove) && (
                         <button 
                             style={techStyles.removeButton}
                             className="remove-btn tech-button" 

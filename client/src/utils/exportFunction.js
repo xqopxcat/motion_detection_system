@@ -1,14 +1,14 @@
 export const exportJSON = (motionDataRef) => {
-if (!motionDataRef.current || motionDataRef.current.length === 0) return;
-const jsonStr = JSON.stringify(motionDataRef.current, null, 2);
-const blob = new Blob([jsonStr], { type: 'application/json' });
-const url = URL.createObjectURL(blob);
-const link = document.createElement('a');
-link.href = url;
-link.download = `pose_landmarks_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-link.click();
-URL.revokeObjectURL(url);
-console.log('JSON 匯出完成');
+    if (!motionDataRef.current || motionDataRef.current.length === 0) return;
+    const jsonStr = JSON.stringify(motionDataRef.current, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pose_landmarks_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    console.log('JSON 匯出完成');
 };
 
 export const exportBVH = async (motionDataRef) => {

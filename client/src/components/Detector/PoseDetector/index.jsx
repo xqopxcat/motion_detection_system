@@ -10,6 +10,7 @@ import { initMarkers, initrConnections } from "../../../utils/initMarkerConnecti
 import { BVHExporter } from "../../../utils/bvhExporter";
 import { exportJSON } from '../../../utils/exportFunction';
 import './PoseDetector.scss';
+import { useCreateMotionMutation } from "../../../../redux/services/motionCoreAPI";
 
 // 科技感優化樣式
 const styles = `
@@ -144,6 +145,10 @@ const PoseDetector = () => {
   const [recordedFrames, setRecordedFrames] = useState(0);
   const [hasRecordedData, setHasRecordedData] = useState(false);
 
+  // 添加上傳狀態
+  const [isUploading, setIsUploading] = useState(false);
+  const [createMotion] = useCreateMotionMutation();
+
   // 檢測設備類型
   useEffect(() => {
     const checkMobile = () => {
@@ -259,7 +264,7 @@ const PoseDetector = () => {
     }
   };
 
-  const downloadVideo = () => {
+  const downloadVideo = async () => {
     if (recordedChunksRef.current.length === 0) return;
     
     // 檢測錄製的MIME類型
@@ -287,6 +292,18 @@ const PoseDetector = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    // // 2. 同時上傳到伺服器（可選）
+    // try {
+    //   setIsUploading(true); // 添加上傳狀態
+    //   await uploadToServer(blob, motionDataRef.current);
+    //   alert('影片已成功上傳到雲端！');
+    // } catch (error) {
+    //   console.error('雲端上傳失敗:', error);
+    //   alert('本地下載成功，但雲端上傳失敗');
+    // } finally {
+    //   setIsUploading(false);
+    // }
     
     console.log(`影片下載完成 (${mimeType}, 檔案大小: ${(blob.size / 1024 / 1024).toFixed(2)}MB)`);
   };
@@ -427,7 +444,6 @@ const PoseDetector = () => {
             if (isRecordingRef.current && filteredWorldLandmarks && filteredWorldLandmarks.length > 0) {
               const currentTime = Date.now();
               const frameTime = recordingStartTimeRef.current ? (currentTime - recordingStartTimeRef.current) / 1000 : 0;
-              console.log('Recording frameTime:', frameTime, 'currentTime:', currentTime, 'startTime:', recordingStartTimeRef.current);
               const frameData = {
                 timestamp: currentTime,
                 frameTime: frameTime,
@@ -479,6 +495,59 @@ const PoseDetector = () => {
       }
     };
   }, []);
+  
+  // 添加 API 請求函數
+  const uploadToServer = async (videoBlob, motionData) => {
+    try {
+      const formData = new FormData();
+      
+      // 添加影片檔案
+      formData.append('video', videoBlob, `motion_${Date.now()}.webm`);
+      
+      // 添加姿勢數據（轉換為 JSON 檔案）
+      const jsonBlob = new Blob([JSON.stringify(motionData, null, 2)], {
+        type: 'application/json'
+      });
+      formData.append('landmarks', jsonBlob, `landmarks_${Date.now()}.json`);
+      
+      // 添加其他元數據
+      formData.append('title', `動作記錄 ${new Date().toLocaleDateString()}`);
+      formData.append('description', '來自 AI Pose Detector 的動作記錄');
+      formData.append('isPublic', 'false');
+      formData.append('fps', isMobile ? '30' : '60');
+      formData.append('platform', navigator.platform);
+      formData.append('videoDuration', recordingDuration.toString());
+      formData.append('width', videoRef.current?.videoWidth?.toString() || '640');
+      formData.append('height', videoRef.current?.videoHeight?.toString() || '480');
+      // 發送到後端 API
+      const response = await createMotion(formData);
+      console.log(response);
+      
+      return response;
+    } catch (error) {
+      console.error('上傳到伺服器失敗:', error);
+      throw error;
+    }
+  };
+  
+  // 新增：一鍵上傳功能
+  const uploadToCloud = async () => {
+    if (recordedChunksRef.current.length === 0 || motionDataRef.current.length === 0) {
+      alert('沒有可上傳的數據');
+      return;
+    }
+    
+    try {
+      setIsUploading(true);
+      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const result = await uploadToServer(blob, motionDataRef.current);
+      console.log(result);
+    } catch (error) {
+      alert('上傳失敗: ' + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="mobile-optimized mobile-pose-detector" style={{ 
@@ -763,6 +832,33 @@ const PoseDetector = () => {
                 }}
               >
                 📥 JSON
+              </button>
+              
+              {/* 新增：上傳到雲端按鈕 */}
+              <button
+                onClick={uploadToCloud}
+                disabled={isUploading}
+                style={{
+                  padding: '12px 16px',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  fontSize: 'clamp(0.75rem, 2.5vw, 0.85rem)',
+                  minHeight: '48px',
+                  touchAction: 'manipulation',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 15px rgba(23, 162, 184, 0.3)',
+                  letterSpacing: '0.3px',
+                  textTransform: 'uppercase',
+                  transition: 'all 0.3s ease',
+                  background: isUploading 
+                    ? 'linear-gradient(145deg, #6c757d, #5a6268)' 
+                    : 'linear-gradient(145deg, #28a745, #20c997)',
+                  gridColumn: '1 / -1'
+                }}
+              >
+                {isUploading ? '☁️ UPLOADING...' : '☁️ UPLOAD TO CLOUD'}
               </button>
               
               <button

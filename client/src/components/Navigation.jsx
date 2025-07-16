@@ -87,7 +87,7 @@ function Navigation() {
     switch (path) {
       case '/':
         return '🎯'
-      case '/view':
+      case '/motion':
         return '👁️'
       default:
         return '📱'

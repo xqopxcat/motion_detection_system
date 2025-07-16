@@ -117,7 +117,15 @@ router.post('/', uploadMotionFiles, async (req, res) => {
             publicId: videoUploadResult.public_id,
             format: videoUploadResult.format,
             duration: videoUploadResult.duration,
-            bytes: videoUploadResult.bytes
+            bytes: videoUploadResult.bytes,
+            thumbnail: cloudinary.url(videoUploadResult.public_id, {
+                resource_type: 'video',
+                format: 'jpg',
+                transformation: [
+                    { width: 300, height: 200, crop: 'fill' },
+                    { quality: 'auto' }
+                ]
+            })
           }
         },
         tags: tags ? tags.split(',').map(tag => tag.trim()) : [],

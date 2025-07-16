@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
+import { useParams } from 'react-router-dom';
 import { initScene } from '../scenes/init'; // 假設有一個 initScene 函數來初始化場景
 import { addLights, addFloor } from '../scenes/lightsAndFloor'; // 假設有一個模組來添加光源和地板
 import { makeTextSprite } from "../scenes/modules";
@@ -69,9 +70,9 @@ const MotionViewer = () => {
     const selectedJointRef = useRef('');
     const comparedJointRef = useRef('');
     const hipsPositionsRef = useRef([]);
+    const { id: sessionId } = useParams();
+    const { data : motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery(sessionId);
 
-    const { data : motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery('a792aa47-1a12-4377-b929-ce2bf53fadda');
-    
     useEffect(() => {
       isPausedRef.current = isPaused;
     }, [isPaused]);

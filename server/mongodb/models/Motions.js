@@ -144,7 +144,8 @@ const motionSchema = new mongoose.Schema({
       publicId: String,
       format: String,
       duration: Number, // 影片在 Cloudinary 的實際時長
-      bytes: Number // 影片大小（bytes）
+      bytes: Number, // 影片大小（bytes）
+      thumbnail: String
     }
   },
   analysis: {

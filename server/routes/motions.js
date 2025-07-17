@@ -80,6 +80,43 @@ router.post('/', uploadMotionFiles, async (req, res) => {
     }
     
     const sessionId = uuidv4();
+    const motions = new Motions({
+      sessionId,
+      userId: req.user?.id || null,
+      title: title || `動作記錄 ${new Date().toLocaleDateString()}`,
+      description: description || '',
+      videoFileName: videoFile.originalname,
+      videoUrl: '', // 暫時為空
+      videoPublicId: '', // 暫時為空
+      videoDuration: parseFloat(req.body.videoDuration) || 0,
+      videoSize: videoFile.size,
+      frameData,
+      metadata: {
+        totalFrames: frameData.length,
+        fps: parseFloat(req.body.fps) || 30,
+        resolution: {
+          width: parseInt(req.body.width) || 0,
+          height: parseInt(req.body.height) || 0
+        },
+        deviceInfo: {
+          userAgent: req.headers['user-agent'],
+          platform: req.body.platform || 'unknown',
+          camera: req.body.camera || 'default'
+        }
+      },
+      tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+      isPublic: isPublic === 'true',
+      status: 'processing', // 🔧 設置為處理中
+      analysis: {
+        averageConfidence: 0,
+        detectedActions: [],
+        qualityScore: 0
+      }
+    });
+    
+    await motions.save();
+    console.log('✅ 數據庫記錄創建成功，sessionId:', sessionId);
+    
     try {
       const base64Data = videoFile.buffer.toString('base64');
       const dataURI = `data:${videoFile.mimetype};base64,${base64Data}`;
@@ -89,55 +126,37 @@ router.post('/', uploadMotionFiles, async (req, res) => {
         folder: process.env.CLOUDINARY_FOLDER || 'motion_detection_videos',
         public_id: sessionId,
       });
-      // 創建新的動作會話
-      const motions = new Motions({
-        sessionId,
-        userId: req.user?.id || null,
-        title: title || `動作記錄 ${new Date().toLocaleDateString()}`,
-        description: description || '',
-        videoFileName: videoFile.originalname,
-        videoUrl: videoUploadResult.secure_url,
-        videoPublicId: videoUploadResult.public_id,
-        videoDuration: parseFloat(req.body.videoDuration) || 0,
-        videoSize: videoFile.size,
-        frameData,
-        metadata: {
-          totalFrames: frameData.length,
-          fps: parseFloat(req.body.fps) || 30,
-          resolution: {
-            width: parseInt(req.body.width) || 0,
-            height: parseInt(req.body.height) || 0
-          },
-          deviceInfo: {
-            userAgent: req.headers['user-agent'],
-            platform: req.body.platform || 'unknown',
-            camera: req.body.camera || 'default'
-          },
-          cloudinary: {
-            publicId: videoUploadResult.public_id,
-            format: videoUploadResult.format,
-            duration: videoUploadResult.duration,
-            bytes: videoUploadResult.bytes,
-            thumbnail: cloudinary.url(videoUploadResult.public_id, {
+
+console.log('✅ Cloudinary 上傳成功');
+
+      // 🔧 使用 updateOne 而不是修改對象後 save
+      await Motions.updateOne(
+        { sessionId },
+        {
+          $set: {
+            videoUrl: videoUploadResult.secure_url,
+            videoPublicId: videoUploadResult.public_id,
+            status: 'completed',
+            'metadata.cloudinary': {
+              publicId: videoUploadResult.public_id,
+              format: videoUploadResult.format,
+              duration: videoUploadResult.duration,
+              bytes: videoUploadResult.bytes,
+              thumbnail: cloudinary.url(videoUploadResult.public_id, {
                 resource_type: 'video',
                 format: 'jpg',
                 transformation: [
-                    { width: 300, height: 200, crop: 'fill' },
-                    { quality: 'auto' }
+                  { width: 300, height: 200, crop: 'fill' },
+                  { quality: 'auto' }
                 ]
-            })
+              })
+            }
           }
-        },
-        tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-        isPublic: isPublic === 'true',
-        analysis: {
-          averageConfidence: 0,
-          detectedActions: [],
-          qualityScore: 0
         }
-      });
-      
-      await motions.save();
+      );
+
+      console.log('✅ 數據庫更新成功');
+
       res.status(201).json({
         success: true,
         message: '創建成功',
@@ -145,22 +164,31 @@ router.post('/', uploadMotionFiles, async (req, res) => {
             sessionId: motions.sessionId,
             id: motions._id,
             videoUrl: videoUploadResult.secure_url,
-            thumbnailUrl: cloudinary.url(videoUploadResult.public_id, {
-                resource_type: 'video',
-                format: 'jpg',
-                transformation: [
-                    { width: 300, height: 200, crop: 'fill' },
-                    { quality: 'auto' }
-                ]
-            })
         }
     });
-    } catch (error) {
-      console.error(error);
+    } catch (cloudinaryError) {
+      console.error(cloudinaryError);
+      try {
+        await Motions.updateOne(
+          { sessionId },
+          {
+            $set: {
+              status: 'failed',
+              'analysis.notes': `Cloudinary 上傳失敗: ${cloudinaryError.message}`
+            }
+          }
+        );
+        console.log('💾 已更新失敗狀態');
+      } catch (updateError) {
+        console.error('❌ 更新失敗狀態也失敗:', updateError);
+      }
+      
       return res.status(500).json({
         success: false,
-        message: '創建失敗',
-        error: error.message
+        message: 'Cloudinary 上傳失敗',
+        error: cloudinaryError.message,
+        sessionId: motions.sessionId, // 返回 sessionId 以便後續重試
+        canRetry: true
       });
     }
   } catch (error) {

@@ -126,10 +126,10 @@ function Navigation() {
           <li>
             <Link
               to="/view"
-              style={location.pathname === '/view' ? activeLinkStyle : linkStyle}
+              style={location.pathname === '/motion' ? activeLinkStyle : linkStyle}
               
             >
-              <span style={iconStyle}>{getIcon('/view')}</span>
+              <span style={iconStyle}>{getIcon('/motion')}</span>
               <span style={textStyle}>Motion Viewer</span>
             </Link>
           </li>

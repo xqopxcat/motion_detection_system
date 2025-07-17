@@ -69,9 +69,9 @@ const PostDetection = () => {
     // 檢測行動裝置
     useEffect(() => {
         const checkMobile = () => {
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        const isSmallScreen = window.innerWidth <= 768;
-        setIsMobile(isMobileDevice || isSmallScreen);
+          const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const isSmallScreen = window.innerWidth <= 768;
+          setIsMobile(isMobileDevice || isSmallScreen);
         };
         
         checkMobile();

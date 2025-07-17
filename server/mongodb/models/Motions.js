@@ -93,12 +93,16 @@ const motionSchema = new mongoose.Schema({
   },
   videoPublicId: {
     type: String,
-    required: true,
+    required: function() {
+      return this.status === 'completed'; // 只有完成時才必填
+    },
     trim: true,
   },
   videoUrl: {
     type: String,
-    required: true,
+    required: function() {
+      return this.status === 'completed'; // 只有完成時才必填
+    },
     trim: true,
   },
   videoDuration: {

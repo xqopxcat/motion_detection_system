@@ -5,6 +5,7 @@ import {
   FilesetResolver,
   DrawingUtils
 } from '@mediapipe/tasks-vision';
+import { MEDIAPIPE_WASM_URL } from '../PoseDetector';
 import BVHExporter from '../../../utils/bvhExporter';
 
 // 科技感優化樣式
@@ -251,7 +252,7 @@ const PoseAnalyzer = () => {
         
         // 初始化 MediaPipe 視覺任務
         const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+          MEDIAPIPE_WASM_URL
         );
 
         // 創建姿態檢測器

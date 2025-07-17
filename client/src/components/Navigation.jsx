@@ -125,7 +125,7 @@ function Navigation() {
           </li>
           <li>
             <Link
-              to="/view"
+              to="/motion"
               style={location.pathname === '/motion' ? activeLinkStyle : linkStyle}
               
             >

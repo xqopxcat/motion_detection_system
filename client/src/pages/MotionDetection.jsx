@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PoseDetector from '../components/Detector/PoseDetector';
 import PoseAnalyzer from '../components/Detector/PoseAnalyzer';
+import { useDeviceDetection } from "../hooks/useDeviceDetection";
 
 // 科技感樣式
 const techStyles = `
@@ -64,22 +65,8 @@ if (typeof document !== 'undefined' && !document.getElementById('tech-app-styles
 
 const PostDetection = () => {
     const [currentMode, setCurrentMode] = useState('detector'); // 'detector', 'analyzer', 'dual', 'motion'
-    const [isMobile, setIsMobile] = useState(false);
-
-    // 檢測行動裝置
-    useEffect(() => {
-        const checkMobile = () => {
-          const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          const isSmallScreen = window.innerWidth <= 768;
-          setIsMobile(isMobileDevice || isSmallScreen);
-        };
-        
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
+    const { isMobile } = useDeviceDetection();
+    
     return (
         <div className="tech-app" style={{ 
         minHeight: '100vh',

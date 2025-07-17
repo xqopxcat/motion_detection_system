@@ -11,6 +11,7 @@ import { BVHExporter } from "../../../utils/bvhExporter";
 import { exportJSON } from '../../../utils/exportFunction';
 import './PoseDetector.scss';
 import { useCreateMotionMutation } from "../../../../redux/services/motionCoreAPI";
+import { useDeviceDetection } from "../../../hooks/useDeviceDetection";
 
 // 科技感優化樣式
 const styles = `
@@ -123,6 +124,9 @@ if (typeof document !== 'undefined' && !document.getElementById('mobile-pose-sty
 
 const filteredConnections = createFilteredConnections(allowedIndices);
 
+export const MEDIAPIPE_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+export const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task';
+
 const PoseDetector = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -135,7 +139,6 @@ const PoseDetector = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDetecting, setIsDetecting] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   
   // 錄製相關狀態
   const [isRecording, setIsRecording] = useState(false);
@@ -148,20 +151,8 @@ const PoseDetector = () => {
   // 添加上傳狀態
   const [isUploading, setIsUploading] = useState(false);
   const [createMotion] = useCreateMotionMutation();
-
-  // 檢測設備類型
-  useEffect(() => {
-    const checkMobile = () => {
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const isSmallScreen = window.innerWidth <= 768;
-      setIsMobile(isMobileDevice || isSmallScreen);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  
+  const { isMobile, platform } = useDeviceDetection();
 
   // 錄製控制函數
   const startRecording = async () => {
@@ -293,18 +284,6 @@ const PoseDetector = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    // // 2. 同時上傳到伺服器（可選）
-    // try {
-    //   setIsUploading(true); // 添加上傳狀態
-    //   await uploadToServer(blob, motionDataRef.current);
-    //   alert('影片已成功上傳到雲端！');
-    // } catch (error) {
-    //   console.error('雲端上傳失敗:', error);
-    //   alert('本地下載成功，但雲端上傳失敗');
-    // } finally {
-    //   setIsUploading(false);
-    // }
-    
     console.log(`影片下載完成 (${mimeType}, 檔案大小: ${(blob.size / 1024 / 1024).toFixed(2)}MB)`);
   };
 
@@ -329,14 +308,14 @@ const PoseDetector = () => {
         
         // 初始化 MediaPipe 視覺任務
         const vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+          MEDIAPIPE_WASM_URL
         );
 
         // 創建姿態檢測器
         landmarkerRef.current = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task',
+              MODEL_URL,
             delegate: 'CPU' // 使用 CPU 避免 GPU 資源衝突
           },
           runningMode: 'VIDEO',
@@ -411,10 +390,6 @@ const PoseDetector = () => {
         const filteredLandmarks = results.landmarks[0].filter((_, i) => allowedIndices.includes(i));
         const filteredWorldLandmarks = results.worldLandmarks[0].filter((_, i) => allowedIndices.includes(i));
         
-        // 顯示連線信息（可選，用於調試）
-        // if (filteredLandmarks.length > 0) {
-        //   console.log(`檢測到 ${filteredLandmarks.length} 個關鍵點，${filteredConnections.length} 條連線`);
-        // }
         // 設置畫布尺寸
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -483,16 +458,69 @@ const PoseDetector = () => {
       
       if (animationId) {
         cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      
+      // 停止錄製（如果正在進行）
+      if (isRecordingRef.current) {
+        setIsRecording(false);
+        isRecordingRef.current = false;
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
       }
       
       if (landmarkerRef.current) {
-        landmarkerRef.current.close();
+        try {
+          landmarkerRef.current.close();
+          landmarkerRef.current = null;
+        } catch (error) {
+          console.warn('關閉 landmarker 時發生錯誤:', error);
+        }
       }
       
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject;
-        stream.getTracks().forEach(track => track.stop());
+      if (videoRef.current) {
+        const video = videoRef.current;
+        
+        // 暫停視頻
+        video.pause();
+        
+        // 獲取並停止所有軌道
+        if (video.srcObject) {
+          const stream = video.srcObject;
+          console.log('正在停止攝影機軌道...', stream.getTracks().length);
+          
+          stream.getTracks().forEach((track, index) => {
+            console.log(`停止軌道 ${index}:`, track.kind, track.readyState);
+            track.stop();
+            
+            // 確保軌道完全停止
+            setTimeout(() => {
+              if (track.readyState !== 'ended') {
+                console.warn(`軌道 ${index} 未正確停止，強制停止`);
+                track.stop();
+              }
+            }, 100);
+          });
+          
+          // 清空 srcObject
+          video.srcObject = null;
+        }
+        
+        // 清空 video 元素
+        video.load();
       }
+      // 清理 Canvas
+      if (canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      
+      // 清理 refs
+      recordedChunksRef.current = [];
+      motionDataRef.current = [];
+      recordingStartTimeRef.current = null;
     };
   }, []);
   
@@ -515,7 +543,7 @@ const PoseDetector = () => {
       formData.append('description', '來自 AI Pose Detector 的動作記錄');
       formData.append('isPublic', 'false');
       formData.append('fps', isMobile ? '30' : '60');
-      formData.append('platform', navigator.platform);
+      formData.append('platform', platform);
       formData.append('videoDuration', recordingDuration.toString());
       formData.append('width', videoRef.current?.videoWidth?.toString() || '640');
       formData.append('height', videoRef.current?.videoHeight?.toString() || '480');

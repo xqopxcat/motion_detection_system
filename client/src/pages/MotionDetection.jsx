@@ -69,16 +69,16 @@ const PostDetection = () => {
     
     return (
         <div className="tech-app" style={{ 
-        minHeight: '100vh',
-        width: '100%',
-        margin: 0,
-        padding: 0,
-        background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%)',
-        position: 'relative',
-        overflow: 'hidden',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column'
+          minHeight: '100vh',
+          width: '100%',
+          margin: 0,
+          padding: 0,
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
         {/* 科技感背景效果 */}
         <div style={{
@@ -100,7 +100,7 @@ const PostDetection = () => {
             position: 'relative',
             zIndex: 1,
             width: 'calc(100% - 32px)',
-            marginLeft: '70px', // 避開 Navigation sidebar
+            marginLeft: isMobile ? '0px' : '70px',
             background: 'linear-gradient(145deg, rgba(13, 17, 31, 0.95), rgba(25, 39, 67, 0.9))',
             backdropFilter: 'blur(15px)',
             borderBottom: '1px solid rgba(0, 255, 255, 0.2)',
@@ -229,7 +229,7 @@ const PostDetection = () => {
             width: '100%',
             padding: 0,
             margin: 0,
-            marginLeft: '70px', // 避開 Navigation sidebar
+            marginLeft: isMobile ? '0px' : '70px',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden'

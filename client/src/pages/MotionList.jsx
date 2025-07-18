@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetMotionsQuery } from "../../redux/services/motionCoreAPI";
+import { useDeleteMotionMutation, useGetMotionsQuery } from "../../redux/services/motionCoreAPI";
 
 const MotionList = () => {
   const [motions, setMotions] = useState([]);
@@ -10,6 +10,7 @@ const MotionList = () => {
   const navigate = useNavigate();
 
   const { data: motionsData, isFetching, error: queryError } = useGetMotionsQuery();
+  const [deleteMotion] = useDeleteMotionMutation();
   
   useEffect(() => {
     if (motionsData && !isFetching) {
@@ -54,10 +55,13 @@ const MotionList = () => {
     }
     
     try {
-      // 這裡需要實作刪除 API
-      // await deleteMotion(sessionId);
-      // setMotions(motions.filter(motion => motion.sessionId !== sessionId));
-      alert('刪除成功');
+      const response = await deleteMotion(sessionId);
+      if (response.data.success) {
+        alert('刪除成功');
+      }
+      else {
+        alert('刪除失敗: ' + response.data.message);
+      }
     } catch (error) {
       alert('刪除失敗: ' + error.message);
     }

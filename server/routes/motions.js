@@ -5,6 +5,61 @@ const cloudinary = require('../config/cloudinary');
 const { uploadMotionFiles } = require('../middleware/upload');
 const { v4: uuidv4 } = require('uuid');
 
+// 添加健康檢查路由
+router.get('/health/check', async (req, res) => {
+  try {
+    const start = Date.now();
+    
+    // 檢查連接狀態
+    const connectionState = mongoose.connection.readyState;
+    const states = {
+      0: 'disconnected',
+      1: 'connected', 
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+
+    if (connectionState !== 1) {
+      return res.status(503).json({
+        success: false,
+        database: {
+          status: states[connectionState],
+          state: connectionState
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // 執行簡單的資料庫查詢測試
+    await mongoose.connection.db.admin().ping();
+    
+    // 測試 motions collection
+    const count = await Motions.countDocuments().maxTimeMS(5000);
+    const responseTime = Date.now() - start;
+    
+    res.json({
+      success: true,
+      database: {
+        status: states[connectionState],
+        state: connectionState,
+        host: mongoose.connection.host,
+        name: mongoose.connection.name,
+        motionsCount: count,
+        responseTime: `${responseTime}ms`
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ 健康檢查失敗:', error);
+    res.status(503).json({
+      success: false,
+      message: '資料庫健康檢查失敗',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 // router.get('/', (req, res) => {
 //     res.send('Hello World from the motions route!');
 // });
@@ -106,7 +161,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
       },
       tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
       isPublic: isPublic === 'true',
-      status: 'processing', // 🔧 設置為處理中
+      status: 'processing',
       analysis: {
         averageConfidence: 0,
         detectedActions: [],
@@ -115,7 +170,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
     });
     
     await motions.save();
-    console.log('✅ 數據庫記錄創建成功，sessionId:', sessionId);
+    console.log('✅ 資料庫記錄創建成功，sessionId:', sessionId);
     
     try {
       const base64Data = videoFile.buffer.toString('base64');
@@ -127,7 +182,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
         public_id: sessionId,
       });
 
-console.log('✅ Cloudinary 上傳成功');
+      console.log('✅ Cloudinary 上傳成功');
 
       // 🔧 使用 updateOne 而不是修改對象後 save
       await Motions.updateOne(
@@ -155,7 +210,7 @@ console.log('✅ Cloudinary 上傳成功');
         }
       );
 
-      console.log('✅ 數據庫更新成功');
+      console.log('✅ 資料庫更新成功');
 
       res.status(201).json({
         success: true,
@@ -201,5 +256,35 @@ console.log('✅ Cloudinary 上傳成功');
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const motion = await Motions.findOneAndDelete({ sessionId: req.params.id });
+
+    if (!motion) {
+      return res.status(404).json({
+        success: false,
+        message: '動作不存在'
+      });
+    }
+
+    // 如果有 Cloudinary 上傳的影片，則刪除
+    if (motion.videoPublicId) {
+      await cloudinary.uploader.destroy(motion.videoPublicId, { resource_type: 'video' });
+      console.log('✅ Cloudinary 上傳的影片已刪除');
+    }
+
+    res.json({
+      success: true,
+      message: '動作已刪除'
+    });
+  } catch (error) {
+    console.error('Error deleting motion:', error);
+    res.status(500).json({
+      success: false,
+      message: '刪除動作失敗',
+      error: error.message
+    });
+  }
+});
 // 其他路由和中間件可以在這裡添加
 module.exports = router;

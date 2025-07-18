@@ -23,6 +23,13 @@ export const motionCoreApi = createApi({
               })
             },
             invalidatesTags: ['Motion']
+        }),
+        deleteMotion: builder.mutation({
+            query: (id) => ({
+                url: `motions/${id}`,
+                method: 'DELETE'
+            }),
+            invalidatesTags: ['Motion']
         })
     })
 });
@@ -30,5 +37,6 @@ export const motionCoreApi = createApi({
 export const { 
     useGetMotionsQuery,
     useGetMotionDetailsQuery,
-    useCreateMotionMutation
+    useCreateMotionMutation,
+    useDeleteMotionMutation
 } = motionCoreApi;

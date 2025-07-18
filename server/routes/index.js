@@ -3,6 +3,7 @@ const router = express.Router();
 
 // API 路由
 router.use('/motions', require('./motions'));
+router.use('/annotations', require('./annotations'));
 // router.use('/auth', require('./auth'));
 // router.use('/sessions', require('./sessions'));
 // router.use('/files', require('./files'));
@@ -27,6 +28,7 @@ router.get('/', (req, res) => {
         version: '1.0.0',
         endpoints: {
             motions: '/api/motions',
+            annotations: '/api/annotations',
         //   auth: '/api/auth',
         //   sessions: '/api/sessions',
         //   files: '/api/files',

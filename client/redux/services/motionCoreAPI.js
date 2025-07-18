@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const motionCoreApi = createApi({
     reducerPath: 'motionCoreApi',
     baseQuery: fetchBaseQuery({
-        baseUrl: 'http://localhost:8080/api/',
+        baseUrl: `${import.meta.env.VITE_API_BASE_URL}/api/`,
     }),
     tagTypes: ['Motion'],
     endpoints: (builder) => ({

@@ -5,7 +5,7 @@ export const motionCoreApi = createApi({
     baseQuery: fetchBaseQuery({
         baseUrl: `${import.meta.env.VITE_API_BASE_URL}/api/`,
     }),
-    tagTypes: ['Motion'],
+    tagTypes: ['Motion', 'Annotations'],
     endpoints: (builder) => ({
         getMotions: builder.query({
             query: () => 'motions',
@@ -30,6 +30,20 @@ export const motionCoreApi = createApi({
                 method: 'DELETE'
             }),
             invalidatesTags: ['Motion']
+        }),
+        getAnnotations: builder.query({
+            query: (sessionId) => `annotations/${sessionId}`,
+            providesTags: ['Annotations']
+        }),
+        createAnnotation: builder.mutation({
+          query: (annotationData) => {
+            return ({
+              url: 'annotations',
+              method: 'POST',
+              body: annotationData
+            })
+          },
+          invalidatesTags: ['Annotations']
         })
     })
 });
@@ -38,5 +52,7 @@ export const {
     useGetMotionsQuery,
     useGetMotionDetailsQuery,
     useCreateMotionMutation,
-    useDeleteMotionMutation
+    useDeleteMotionMutation,
+    useGetAnnotationsQuery,
+    useCreateAnnotationMutation,
 } = motionCoreApi;

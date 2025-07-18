@@ -10,7 +10,7 @@ import VideoPanel from "../components/Viewer/VideoPanel";
 import PanelLayout from "../components/Viewer/PanelLayout";
 // import { loadBVHAndInitSkeleton, loadFBXAndInitSkeleton, loadLandmarkAndInitSkeleton } from "../scenes/loadFile";
 import { fetchLandmark } from "../scenes/loadData";
-import { useGetMotionDetailsQuery, useGetMotionsQuery } from "../../redux/services/motionCoreAPI";
+import { useGetAnnotationsQuery, useGetMotionDetailsQuery, useGetMotionsQuery } from "../redux/services/motionCoreAPI";
 
 const boneMeshes = [];
 const jointSpheres = [];
@@ -71,7 +71,8 @@ const MotionViewer = () => {
     const comparedJointRef = useRef('');
     const hipsPositionsRef = useRef([]);
     const { id: sessionId } = useParams();
-    const { data : motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery(sessionId);
+    const { data: motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery(sessionId);
+    const { data: annotationsData, isLoading: isAnnotationsLoading } = useGetAnnotationsQuery(sessionId);
 
     useEffect(() => {
       isPausedRef.current = isPaused;
@@ -126,6 +127,7 @@ const MotionViewer = () => {
             comparedJointRef,
             hipsPositionsRef,
             animate,
+            sessionId
           });
         }
 
@@ -230,7 +232,7 @@ const MotionViewer = () => {
                     onToggleControlPanel={() => setShowControlPanel(!showControlPanel)}
                     showVideoPanel={showVideoPanel}
                     onToggleVideoPanel={() => setShowVideoPanel(!showVideoPanel)}
-                    annotations={annotations}
+                    annotations={annotationsData?.data}
                     onAnnotationFocus={ann => {
                         // 例如讓相機聚焦到 ann.bone
                         if (ann.bone) {

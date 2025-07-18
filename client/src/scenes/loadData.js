@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { makeTextSprite } from "./modules";
+import { store } from '../redux/store'
+import { motionCoreApi } from '../redux/services/motionCoreAPI';
+
+const { createAnnotation } = motionCoreApi.endpoints;
 
 // 您的 landmark_data.json 包含的 17 個關節點索引：[0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
 // 對應的連接關係（使用數組索引 0-16）
@@ -82,8 +86,10 @@ export async function fetchLandmark({
     comparedJointRef,
     hipsPositionsRef,
     animate,
+    sessionId
 }) {
   console.log('Landmark 數據加載完成', landmarkData);
+  
   // 創建虛擬骨架結構
   const skeletonGroup = new THREE.Group();
   const bones = [];
@@ -186,7 +192,7 @@ export async function fetchLandmark({
   });
   // 點擊事件
   renderer.domElement.addEventListener('click', e => 
-      onClick(e, renderer, camera, skeletonGroup, jointSpheres, setAnnotations, frameRef)
+      onClick(e, renderer, camera, skeletonGroup, jointSpheres, setAnnotations, frameRef, sessionId)
   );
   
   // 創建自定義動畫系統
@@ -229,7 +235,7 @@ export async function fetchLandmark({
       onSetCurrentFrameData: setCurrentFrameData,
   });
   
-  resolve({
+  return {
       skeletonGroup,
       bones,
       boneMeshes,
@@ -238,10 +244,10 @@ export async function fetchLandmark({
       chestSphere,
       mixer: landmarkMixer,
       landmarkData
-  });
+  };
 }
 
-function onClick(event, renderer, camera, object, jointSpheres, setAnnotations, frameRef) {
+async function onClick(event, renderer, camera, object, jointSpheres, setAnnotations, frameRef, sessionId) {
     const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(
         ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -261,7 +267,7 @@ function onClick(event, renderer, camera, object, jointSpheres, setAnnotations, 
                 const info = {
                     frame: frameRef.current,
                     text
-                }
+                };
                 const sprite = makeTextSprite(`${frameRef.current} ${joint.bone.name}: ${text}`);
                 sprite.position.copy(joint.bone.getWorldPosition(new THREE.Vector3()));
                 sprite.position.y += 8; // 提高一些位置以避免與骨頭重疊
@@ -272,10 +278,25 @@ function onClick(event, renderer, camera, object, jointSpheres, setAnnotations, 
                 );
                 marker.position.copy(joint.bone.getWorldPosition(new THREE.Vector3()));
                 object.add(marker);
-                setAnnotations(prev => [
-                    ...prev,
-                    { bone: joint.bone, sprite, marker, info }
-                ]);
+                await store.dispatch(
+                    createAnnotation.initiate({
+                        sessionId,
+                        frameNumber: frameRef.current,
+                        jointName: joint.bone.name,
+                        position: {
+                            x: marker.position.x,
+                            y: marker.position.y,
+                            z: marker.position.z
+                        },
+                        text,
+                        category: 'general',
+                        color: '#00ff00'
+                    })
+                );
+                // setAnnotations(prev => [
+                //     ...prev,
+                //     { bone: joint.bone, sprite, marker, info }
+                // ]);
             }
         }
     }

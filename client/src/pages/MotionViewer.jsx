@@ -9,8 +9,9 @@ import ActionDataPanel from "../components/Viewer/ActionDataPanel";
 import VideoPanel from "../components/Viewer/VideoPanel";
 import PanelLayout from "../components/Viewer/PanelLayout";
 // import { loadBVHAndInitSkeleton, loadFBXAndInitSkeleton, loadLandmarkAndInitSkeleton } from "../scenes/loadFile";
-import { fetchLandmark } from "../scenes/loadData";
-import { useGetAnnotationsQuery, useGetMotionDetailsQuery, useGetMotionsQuery } from "../redux/services/motionCoreAPI";
+import { fetchAnnotationMark, fetchLandmark } from "../scenes/loadData";
+import { useGetMotionDetailsQuery } from "../redux/services/motionCoreAPI";
+import { useGetAnnotationsQuery, useUpdateAnnotationMutation, useDeleteAnnotationMutation } from "../redux/services/annotationCoreAPI";
 
 const boneMeshes = [];
 const jointSpheres = [];
@@ -74,6 +75,8 @@ const MotionViewer = () => {
     const { data: motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery(sessionId);
     const { data: annotationsData, isLoading: isAnnotationsLoading } = useGetAnnotationsQuery(sessionId);
 
+    const [updateAnnotation] = useUpdateAnnotationMutation();
+    const [deleteAnnotation] = useDeleteAnnotationMutation();
     useEffect(() => {
       isPausedRef.current = isPaused;
     }, [isPaused]);
@@ -129,6 +132,10 @@ const MotionViewer = () => {
             animate,
             sessionId
           });
+        }
+        
+        if (!isAnnotationsLoading && annotationsData) {
+          fetchAnnotationMark(scene, annotationsData?.data);
         }
 
         // Landmark 加載
@@ -199,7 +206,7 @@ const MotionViewer = () => {
             mount.removeChild(renderer.domElement);
             window.removeEventListener('resize', handleResize);
         };
-    }, [motionData, isMotionsLoading]);
+    }, [motionData, isMotionsLoading, annotationsData, isAnnotationsLoading]);
     
     useEffect(() => {
         if (frameStep && mixerRef.current) {
@@ -234,45 +241,19 @@ const MotionViewer = () => {
                     onToggleVideoPanel={() => setShowVideoPanel(!showVideoPanel)}
                     annotations={annotationsData?.data}
                     onAnnotationFocus={ann => {
-                        // 例如讓相機聚焦到 ann.bone
-                        if (ann.bone) {
-                            const pos = ann.bone.getWorldPosition(new THREE.Vector3());
+                        if (ann) {
+                            const pos = new THREE.Vector3(ann.position.x, ann.position.y, ann.position.z);
                             cameraRef.current.position.lerp(pos, 0.5); // 或自訂聚焦動畫
                         }
                     }}
-                    onAnnotationDelete={idx => {
-                        setAnnotations(prev => {
-                            const annotation = prev[idx];
-                            if (annotation?.marker && annotation.marker.parent) {
-                                annotation.marker.parent.remove(annotation.marker);
-                            }
-                            if (annotation?.sprite && annotation.sprite.parent) {
-                                annotation.sprite.parent.remove(annotation.sprite);
-                            }
-                            return prev.filter((_, i) => i !== idx)
-                        });
+                    onAnnotationDelete={id => {
+                        deleteAnnotation(id);
                     }}
-                    onAnnotationEdit={(idx, newText) => {
-                        setAnnotations(prev => prev.map((ann, i) => {
-                            if (i === idx) {
-                                // 1. 產生新的 sprite
-                                const newSprite = makeTextSprite(`${ann.info.frame} ${ann.bone?.name}: ${newText}`);
-                                // 2. 保持 sprite 位置不變
-                                newSprite.position.copy(ann.sprite.position);
-                                // 3. 用新 sprite 替換舊 sprite
-                                if (ann.sprite && ann.sprite.parent) {
-                                    ann.sprite.parent.add(newSprite);
-                                    ann.sprite.parent.remove(ann.sprite);
-                                }
-                                // 4. 回傳新的 annotation
-                                return {
-                                    ...ann,
-                                    sprite: newSprite,
-                                    info: { ...ann.info, text: newText }
-                                };
-                            }
-                            return ann;
-                        }));
+                    onAnnotationEdit={(id, newText) => {
+                      updateAnnotation({
+                        annotationId: id,
+                        text: newText
+                      });
                     }}
                     frameNumber={frameNumber}
                     frameRef={frameRef}

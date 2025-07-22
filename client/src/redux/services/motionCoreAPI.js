@@ -31,20 +31,6 @@ export const motionCoreApi = createApi({
             }),
             invalidatesTags: ['Motion']
         }),
-        getAnnotations: builder.query({
-            query: (sessionId) => `annotations/${sessionId}`,
-            providesTags: ['Annotations']
-        }),
-        createAnnotation: builder.mutation({
-          query: (annotationData) => {
-            return ({
-              url: 'annotations',
-              method: 'POST',
-              body: annotationData
-            })
-          },
-          invalidatesTags: ['Annotations']
-        })
     })
 });
 
@@ -53,6 +39,4 @@ export const {
     useGetMotionDetailsQuery,
     useCreateMotionMutation,
     useDeleteMotionMutation,
-    useGetAnnotationsQuery,
-    useCreateAnnotationMutation,
 } = motionCoreApi;

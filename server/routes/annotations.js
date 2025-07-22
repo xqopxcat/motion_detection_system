@@ -2,9 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const Annotations = require('../mongodb/models/Annotations');
+const { uploadMotionFiles } = require('../middleware/upload');
 
 // 創建標注
-router.post('/', async (req, res) => {
+router.post('/', uploadMotionFiles, async (req, res) => {
   try {
     const {
       sessionId,
@@ -91,7 +92,7 @@ router.get('/:sessionId', async (req, res) => {
 router.put('/:annotationId', async (req, res) => {
   try {
     const { annotationId } = req.params;
-    const { text, category, color, isVisible } = req.body;
+    const { text } = req.body;
 
     const annotation = await Annotations.findById(annotationId);
     
@@ -104,9 +105,6 @@ router.put('/:annotationId', async (req, res) => {
 
     // 更新字段
     if (text !== undefined) annotation.text = text;
-    if (category !== undefined) annotation.category = category;
-    if (color !== undefined) annotation.color = color;
-    if (isVisible !== undefined) annotation.isVisible = isVisible;
 
     await annotation.save();
 

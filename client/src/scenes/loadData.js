@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { makeTextSprite } from "./modules";
 import { store } from '../redux/store'
-import { motionCoreApi } from '../redux/services/motionCoreAPI';
+import { annotationCoreAPI } from '../redux/services/annotationCoreAPI';
 
-const { createAnnotation } = motionCoreApi.endpoints;
+const { createAnnotation } = annotationCoreAPI.endpoints;
 
 // 您的 landmark_data.json 包含的 17 個關節點索引：[0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
 // 對應的連接關係（使用數組索引 0-16）
@@ -61,6 +61,27 @@ const JOINT_NAMES = [
     'left_foot_index',// index 15 (MediaPipe index 31)
     'right_foot_index'// index 16 (MediaPipe index 32)
 ];
+
+export async function fetchAnnotationMark(scene, annotationData) {
+  annotationData.forEach(({ 
+    color,
+    frameNumber,
+    position,
+    text,
+    jointName
+  }) => {
+    const sprite = makeTextSprite(`${frameNumber} ${jointName}: ${text}`);
+    sprite.position.copy(new THREE.Vector3(position.x, position.y, position.z));
+    sprite.position.y += 8; // 提高一些位置以避免與骨頭重疊
+    scene.add(sprite);
+    const marker = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5),
+        new THREE.MeshBasicMaterial({ color })
+    );
+    marker.position.copy(position);
+    scene.add(marker);
+  })
+}
 
 export async function fetchLandmark({
     landmarkData,
@@ -264,29 +285,20 @@ async function onClick(event, renderer, camera, object, jointSpheres, setAnnotat
         if (joint) {
             const text = window.prompt('請輸入註解：');
             if (text) {
-                const info = {
-                    frame: frameRef.current,
-                    text
-                };
-                const sprite = makeTextSprite(`${frameRef.current} ${joint.bone.name}: ${text}`);
-                sprite.position.copy(joint.bone.getWorldPosition(new THREE.Vector3()));
-                sprite.position.y += 8; // 提高一些位置以避免與骨頭重疊
-                object.add(sprite);
                 const marker = new THREE.Mesh(
                     new THREE.SphereGeometry(1.5),
                     new THREE.MeshBasicMaterial({ color: 0x00ff00 })
                 );
-                marker.position.copy(joint.bone.getWorldPosition(new THREE.Vector3()));
-                object.add(marker);
+                const position = joint.bone.getWorldPosition(new THREE.Vector3());
                 await store.dispatch(
                     createAnnotation.initiate({
                         sessionId,
                         frameNumber: frameRef.current,
                         jointName: joint.bone.name,
                         position: {
-                            x: marker.position.x,
-                            y: marker.position.y,
-                            z: marker.position.z
+                            x: position.x,
+                            y: position.y,
+                            z: position.z
                         },
                         text,
                         category: 'general',

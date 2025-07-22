@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDeleteMotionMutation, useGetMotionsQuery } from "../../redux/services/motionCoreAPI";
+import { useDeleteMotionMutation, useGetMotionsQuery } from "../redux/services/motionCoreAPI";
 
 const MotionList = () => {
   const [motions, setMotions] = useState([]);

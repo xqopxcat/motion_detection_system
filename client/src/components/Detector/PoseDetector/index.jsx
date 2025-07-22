@@ -10,7 +10,7 @@ import { initMarkers, initrConnections } from "../../../utils/initMarkerConnecti
 import { BVHExporter } from "../../../utils/bvhExporter";
 import { exportJSON } from '../../../utils/exportFunction';
 import './PoseDetector.scss';
-import { useCreateMotionMutation } from "../../../../redux/services/motionCoreAPI";
+import { useCreateMotionMutation } from "../../../redux/services/motionCoreAPI";
 import { useDeviceDetection } from "../../../hooks/useDeviceDetection";
 
 // 科技感優化樣式

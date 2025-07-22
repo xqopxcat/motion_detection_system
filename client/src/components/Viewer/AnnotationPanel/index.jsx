@@ -103,17 +103,17 @@ const techStyles = {
 };
 
 const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
-    const [editIdx, setEditIdx] = useState(null);
+    const [editId, setEditId] = useState(null);
     const [editValue, setEditValue] = useState('');
 
-    const handleEdit = (idx, ann) => {
-        setEditIdx(idx);
-        setEditValue(ann.info.text);
+    const handleEdit = (id, ann) => {
+        setEditId(id);
+        setEditValue(ann.text);
     };
 
-    const handleEditSave = (idx) => {
-        if (onEdit) onEdit(idx, editValue);
-        setEditIdx(null);
+    const handleEditSave = (id) => {
+        if (onEdit) onEdit(id, editValue);
+        setEditId(null);
     };
 
     return (
@@ -123,11 +123,11 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                 <div style={techStyles.empty} className="annotation-empty">尚無註解</div>
             )}
             <ul style={techStyles.list}>
-                {annotations.map((ann, idx) => {
-                    const { bone, info } = ann;
+                {annotations.map((ann) => {
+                    const { _id, jointName, text, frameNumber } = ann;
                     return (
                         <li 
-                            key={idx} 
+                            key={_id} 
                             style={techStyles.item}
                             className="annotation-item"
                             onMouseEnter={(e) => {
@@ -139,7 +139,7 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                 e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
                             }}
                         >
-                            {editIdx === idx ? (
+                            {editId === _id ? (
                                 <div style={techStyles.editContainer}>
                                     <input
                                         style={techStyles.input}
@@ -147,8 +147,8 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                         value={editValue}
                                         onChange={e => setEditValue(e.target.value)}
                                         onKeyDown={e => {
-                                            if (e.key === 'Enter') handleEditSave(idx);
-                                            if (e.key === 'Escape') setEditIdx(null);
+                                            if (e.key === 'Enter') handleEditSave(_id);
+                                            if (e.key === 'Escape') setEditId(null);
                                         }}
                                         onFocus={(e) => e.target.style.borderColor = 'rgba(0, 255, 255, 0.6)'}
                                         onBlur={(e) => e.target.style.borderColor = 'rgba(0, 255, 255, 0.3)'}
@@ -158,7 +158,7 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                         <button
                                             style={techStyles.button}
                                             className="annotation-save tech-button"
-                                            onClick={() => handleEditSave(idx)}
+                                            onClick={() => handleEditSave(_id)}
                                             title="儲存"
                                             onMouseEnter={(e) => {
                                                 e.target.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
@@ -174,7 +174,7 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                         <button
                                             style={techStyles.button}
                                             className="annotation-cancel tech-button"
-                                            onClick={() => setEditIdx(null)}
+                                            onClick={() => setEditId(null)}
                                             title="取消"
                                             onMouseEnter={(e) => {
                                                 e.target.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
@@ -193,10 +193,10 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                 <div style={techStyles.itemContent}>
                                     <div style={{ flex: 1 }}>
                                         <div style={techStyles.itemText}>
-                                            <strong>{bone?.name || '未知骨骼'}</strong>: {info.text}
+                                            <strong>{jointName || '未知骨骼'}</strong>: { text }
                                         </div>
                                         <div style={techStyles.itemMeta}>
-                                            時間: {info.time}s | 幀: {info.frame}
+                                            幀: { frameNumber }
                                         </div>
                                     </div>
                                     <div style={techStyles.buttonGroup}>
@@ -219,7 +219,7 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                         <button
                                             style={techStyles.button}
                                             className="annotation-edit tech-button"
-                                            onClick={() => handleEdit(idx, ann)}
+                                            onClick={() => handleEdit(_id, ann)}
                                             title="編輯"
                                             onMouseEnter={(e) => {
                                                 e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.2)';
@@ -235,7 +235,7 @@ const AnnotationPanel = ({ annotations, onFocus, onDelete, onEdit }) => {
                                         <button
                                             style={techStyles.button}
                                             className="annotation-delete tech-button"
-                                            onClick={() => onDelete && onDelete(idx)}
+                                            onClick={() => onDelete && onDelete(_id)}
                                             title="刪除"
                                         >🗑️</button>
                                     </div>

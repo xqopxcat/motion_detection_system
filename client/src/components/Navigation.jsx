@@ -27,7 +27,7 @@ function Navigation() {
 
   const toggleButtonStyle = {
     position: isMobile ? 'fixed' : 'absolute',
-    top: isMobile ? '80px' : '20px',
+    top: '20px',
     left: isMobile ? (isExpanded ? '210px' : '10px') : 'auto', // 行動裝置使用 left
     right: isMobile ? 'auto' : '-15px', // 桌面版使用 right
     width: isMobile ? '50px' : '30px', // 行動裝置更大的按鈕

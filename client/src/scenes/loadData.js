@@ -94,7 +94,6 @@ export async function fetchLandmark({
     jointMapRef,
     boneMeshes,
     jointSpheres,
-    setAnnotations,
     setIsLandmarkLoaded,
     setProgress,
     setFrameNumber,
@@ -213,7 +212,7 @@ export async function fetchLandmark({
   });
   // 點擊事件
   renderer.domElement.addEventListener('click', e => 
-      onClick(e, renderer, camera, skeletonGroup, jointSpheres, setAnnotations, frameRef, sessionId)
+      onClick(e, renderer, camera, skeletonGroup, jointSpheres, frameRef, sessionId)
   );
   
   // 創建自定義動畫系統
@@ -268,7 +267,7 @@ export async function fetchLandmark({
   };
 }
 
-async function onClick(event, renderer, camera, object, jointSpheres, setAnnotations, frameRef, sessionId) {
+async function onClick(event, renderer, camera, jointSpheres, frameRef, sessionId) {
     const rect = renderer.domElement.getBoundingClientRect();
     const mouse = new THREE.Vector2(
         ((event.clientX - rect.left) / rect.width) * 2 - 1,
@@ -305,10 +304,6 @@ async function onClick(event, renderer, camera, object, jointSpheres, setAnnotat
                         color: '#00ff00'
                     })
                 );
-                // setAnnotations(prev => [
-                //     ...prev,
-                //     { bone: joint.bone, sprite, marker, info }
-                // ]);
             }
         }
     }

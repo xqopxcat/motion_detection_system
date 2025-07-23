@@ -6,15 +6,17 @@ import PlayPauseButtons from "./PlayPauseButtons/PlayPauseButtons";
 import SpeedSlider from "./SpeedSlider/SpeedSlider";
 import ProgressSlider from "./ProgressSlider/ProgressSlider";
 import AnnotationPanel from "../AnnotationPanel";
+import { useDeviceDetection } from "../../../hooks/useDeviceDetection";
 
 // 科技感樣式
-const techStyles = {
+const getTechStyles = (isMobile = false) => ({
     container: {
-        position: 'fixed',
-        left: '100px',
+        position: isMobile ? 'relative' : 'fixed',
+        left: isMobile ? '0px' : '100px',
         top: '20px',
-        height: 'calc(100vh - 60px)',
+        height: isMobile ? 'auto' : 'calc(100vh - 60px)',
         width: '360px',
+        margin: 'auto',
         background: 'linear-gradient(145deg, rgba(10, 10, 10, 0.95) 0%, rgba(26, 26, 46, 0.95) 50%, rgba(22, 33, 62, 0.9) 100%)',
         border: '1px solid rgba(0, 255, 255, 0.3)',
         borderRadius: '12px',
@@ -95,93 +97,95 @@ const techStyles = {
         transition: 'all 0.3s ease',
         fontWeight: '500'
     }
-};
+});
 
 export default function ControlPanel(props) {
-    return (
-        <>
-            {!props.showControlPanel ? (
-                <div style={techStyles.containerCollapsed} className="control-panel-collapsed">
-                    <button
-                        style={techStyles.toggleButton}
-                        className="toggle-control-panel-btn tech-button"
-                        onClick={props.onToggleControlPanel}
-                        aria-label="展開控制面板"
-                        title="展開控制面板"
-                        onMouseEnter={(e) => {
-                            e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))';
-                            e.target.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.4)';
-                            e.target.style.transform = 'scale(1.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2))';
-                            e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
-                            e.target.style.transform = 'scale(1)';
-                        }}
-                    >
-                        ▶
-                    </button>
-                </div>
-            ) : (
-                <div style={techStyles.container} className="control-panel-container tech-panel">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={techStyles.title} className="control-panel-title">
-                            控制面板
-                        </div>
-                        <button
-                            style={techStyles.toggleButton}
-                            className="toggle-control-panel-btn tech-button"
-                            onClick={props.onToggleControlPanel}
-                            aria-label="收合控制面板"
-                            title="收合控制面板"
-                            onMouseEnter={(e) => {
-                                e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))';
-                                e.target.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.4)';
-                                e.target.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2))';
-                                e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
-                                e.target.style.transform = 'scale(1)';
-                            }}
-                        >
-                            ◀
-                        </button>
-                    </div>
-                    <div style={techStyles.content}>
-                        <FrameDisplay frameNumber={props.frameNumber} />
-                        <FrameJumpInput value={props.frameNumber} mixerRef={props.mixerRef} setFrameNumber={props.setFrameNumber} />
-                        <PlayPauseButtons isPaused={props.isPaused} setIsPaused={props.setIsPaused} setFrameStep={props.setFrameStep} />
-                        <SpeedSlider speed={props.speed} setSpeed={props.setSpeed} />
-                        <ProgressSlider progress={props.progress} setProgress={props.setProgress} mixerRef={props.mixerRef} />
-                        <div style={techStyles.videoPanelControls} className="video-panel-controls">
-                            <button
-                                style={techStyles.videoPanelButton}
-                                className="video-panel-toggle-btn tech-button"
-                                onClick={props.onToggleVideoPanel}
-                                onMouseEnter={(e) => {
-                                    e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))';
-                                    e.target.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.4)';
-                                    e.target.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2))';
-                                    e.target.style.boxShadow = 'none';
-                                    e.target.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                {props.showVideoPanel ? '隱藏影片面板' : '顯示影片面板'}
-                            </button>
-                        </div>
-                        <AnnotationPanel
-                            annotations={props.annotations}
-                            onFocus={props.onAnnotationFocus}
-                            onDelete={props.onAnnotationDelete}
-                            onEdit={props.onAnnotationEdit}
-                        />
-                    </div>
-                </div>
-            )}
-        </>
-    );
+  const { isMobile } = useDeviceDetection();
+  const techStyles = getTechStyles(isMobile);
+  return (
+    <>
+      {!props.showControlPanel ? (
+          <div style={techStyles.containerCollapsed} className="control-panel-collapsed">
+              <button
+                  style={techStyles.toggleButton}
+                  className="toggle-control-panel-btn tech-button"
+                  onClick={props.onToggleControlPanel}
+                  aria-label="展開控制面板"
+                  title="展開控制面板"
+                  onMouseEnter={(e) => {
+                      e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))';
+                      e.target.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.4)';
+                      e.target.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                      e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2))';
+                      e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+                      e.target.style.transform = 'scale(1)';
+                  }}
+              >
+                  ▶
+              </button>
+          </div>
+      ) : (
+          <div style={techStyles.container} className="control-panel-container tech-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={techStyles.title} className="control-panel-title">
+                      控制面板
+                  </div>
+                  <button
+                      style={techStyles.toggleButton}
+                      className="toggle-control-panel-btn tech-button"
+                      onClick={props.onToggleControlPanel}
+                      aria-label="收合控制面板"
+                      title="收合控制面板"
+                      onMouseEnter={(e) => {
+                          e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))';
+                          e.target.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.4)';
+                          e.target.style.transform = 'scale(1.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                          e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2))';
+                          e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+                          e.target.style.transform = 'scale(1)';
+                      }}
+                  >
+                      ◀
+                  </button>
+              </div>
+              <div style={techStyles.content}>
+                  <FrameDisplay frameNumber={props.frameNumber} />
+                  <FrameJumpInput value={props.frameNumber} mixerRef={props.mixerRef} setFrameNumber={props.setFrameNumber} />
+                  <PlayPauseButtons isPaused={props.isPaused} setIsPaused={props.setIsPaused} setFrameStep={props.setFrameStep} />
+                  <SpeedSlider speed={props.speed} setSpeed={props.setSpeed} />
+                  <ProgressSlider progress={props.progress} setProgress={props.setProgress} mixerRef={props.mixerRef} />
+                  <div style={techStyles.videoPanelControls} className="video-panel-controls">
+                      <button
+                          style={techStyles.videoPanelButton}
+                          className="video-panel-toggle-btn tech-button"
+                          onClick={props.onToggleVideoPanel}
+                          onMouseEnter={(e) => {
+                              e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))';
+                              e.target.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.4)';
+                              e.target.style.transform = 'translateY(-2px)';
+                          }}
+                          onMouseLeave={(e) => {
+                              e.target.style.background = 'linear-gradient(145deg, rgba(0, 255, 255, 0.1), rgba(0, 255, 255, 0.2))';
+                              e.target.style.boxShadow = 'none';
+                              e.target.style.transform = 'translateY(0)';
+                          }}
+                      >
+                          {props.showVideoPanel ? '隱藏影片面板' : '顯示影片面板'}
+                      </button>
+                  </div>
+                  <AnnotationPanel
+                      annotations={props.annotations}
+                      onFocus={props.onAnnotationFocus}
+                      onDelete={props.onAnnotationDelete}
+                      onEdit={props.onAnnotationEdit}
+                  />
+              </div>
+          </div>
+      )}
+    </>
+  );
 }

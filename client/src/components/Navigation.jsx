@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDeviceDetection } from "../hooks/useDeviceDetection";
 
 function Navigation() {
@@ -7,6 +7,14 @@ function Navigation() {
   const [isExpanded, setIsExpanded] = useState(false)
   
   const { isMobile } = useDeviceDetection();
+
+  // 發送導航欄狀態變化事件給其他組件
+  useEffect(() => {
+    const event = new CustomEvent('navToggle', {
+      detail: { isExpanded }
+    });
+    window.dispatchEvent(event);
+  }, [isExpanded]);
 
   const sidebarStyle = {
     position: 'fixed',
@@ -118,12 +126,28 @@ function Navigation() {
           style={toggleButtonStyle}
           onClick={() => setIsExpanded(!isExpanded)}
           onMouseEnter={(e) => {
-            e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.3)'
-            e.target.style.transform = 'scale(1.1)'
+            if (!isMobile) {
+              e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.3)'
+              e.target.style.transform = 'scale(1.1)'
+            }
           }}
           onMouseLeave={(e) => {
-            e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.2)'
-            e.target.style.transform = 'scale(1)'
+            if (!isMobile) {
+              e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.2)'
+              e.target.style.transform = 'scale(1)'
+            }
+          }}
+          onTouchStart={(e) => {
+            if (isMobile) {
+              e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.3)'
+              e.target.style.transform = 'scale(0.95)'
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (isMobile) {
+              e.target.style.backgroundColor = 'rgba(0, 255, 255, 0.2)'
+              e.target.style.transform = 'scale(1)'
+            }
           }}
         >
           {isExpanded ? '◀' : '▶'}
@@ -143,7 +167,6 @@ function Navigation() {
             <Link
               to="/"
               style={location.pathname === '/' ? activeLinkStyle : linkStyle}
-              
             >
               <span style={iconStyle}>{getIcon('/')}</span>
               <span style={textStyle}>Motion Detection</span>
@@ -153,7 +176,6 @@ function Navigation() {
             <Link
               to="/motion"
               style={location.pathname === '/motion' ? activeLinkStyle : linkStyle}
-              
             >
               <span style={iconStyle}>{getIcon('/motion')}</span>
               <span style={textStyle}>Motion Viewer</span>

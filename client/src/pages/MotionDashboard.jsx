@@ -182,6 +182,23 @@ const MotionDashboard = () => {
   const [trainingData, setTrainingData] = useState(mockTrainingData);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
+  const [isNavExpanded, setIsNavExpanded] = useState(false);
+
+  // 監聽導航欄狀態變化
+  useEffect(() => {
+    const handleNavToggle = (event) => {
+      setIsNavExpanded(event.detail.isExpanded);
+    };
+
+    window.addEventListener('navToggle', handleNavToggle);
+    return () => window.removeEventListener('navToggle', handleNavToggle);
+  }, []);
+
+  // 計算動態邊距
+  const getMarginLeft = () => {
+    if (isMobile) return '0px';
+    return isNavExpanded ? '200px' : '40px';
+  };
 
   // 計算統計數據
   const stats = {
@@ -229,33 +246,107 @@ const MotionDashboard = () => {
   };
 
   return (
-    <div className={`motion-dashboard ${isMobile ? 'mobile' : ''}`}>
+    <div 
+      className={`motion-dashboard ${isMobile ? 'mobile' : ''}`}
+      style={{
+        marginLeft: getMarginLeft(),
+        transition: 'margin-left 0.3s ease',
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(26, 26, 46, 0.95) 50%, rgba(22, 33, 62, 0.9) 100%)',
+        color: '#e0e0e0',
+        fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+        padding: isMobile ? '10px' : '20px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* Header */}
-      <div className="dashboard-header">
+      <div className="dashboard-header" style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: '30px',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: '20px'
+      }}>
         <div className="header-content">
-          <h1>動作分析儀表板</h1>
-          <div className="header-controls">
+          <h1 style={{
+            fontSize: isMobile ? '24px' : '32px',
+            color: '#00ffff',
+            textShadow: '0 0 20px rgba(0, 255, 255, 0.5)',
+            margin: '0 0 8px 0',
+            letterSpacing: '1px'
+          }}>
+            🏃‍♂️ Motion Dashboard
+          </h1>
+          <p style={{
+            color: '#cccccc',
+            fontSize: isMobile ? '14px' : '16px',
+            margin: '0'
+          }}>
+            分析您的運動表現與進步軌跡
+          </p>
+          <div className="header-controls" style={{
+            display: 'flex',
+            gap: '15px',
+            marginTop: '15px',
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: isMobile ? 'stretch' : 'center'
+          }}>
             <select 
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
               className="period-selector"
+              style={{
+                background: 'rgba(0, 0, 0, 0.5)',
+                border: '1px solid rgba(0, 255, 255, 0.3)',
+                borderRadius: '6px',
+                color: '#e0e0e0',
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                fontSize: isMobile ? '12px' : '14px',
+                outline: 'none'
+              }}
             >
               <option value="7d">最近 7 天</option>
               <option value="30d">最近 30 天</option>
               <option value="90d">最近 90 天</option>
             </select>
             {compareMode && (
-              <div className="compare-controls">
+              <div className="compare-controls" style={{
+                display: 'flex',
+                gap: '10px'
+              }}>
                 <button 
                   className="btn-success"
                   onClick={handleCompareAnalysis}
                   disabled={selectedRecords.length < 2}
+                  style={{
+                    padding: isMobile ? '8px 12px' : '10px 16px',
+                    background: selectedRecords.length >= 2 
+                      ? 'linear-gradient(145deg, rgba(0, 255, 0, 0.2), rgba(0, 255, 0, 0.3))'
+                      : 'rgba(128, 128, 128, 0.3)',
+                    border: `1px solid ${selectedRecords.length >= 2 ? 'rgba(0, 255, 0, 0.5)' : 'rgba(128, 128, 128, 0.5)'}`,
+                    borderRadius: '6px',
+                    color: selectedRecords.length >= 2 ? '#00ff00' : '#888888',
+                    cursor: selectedRecords.length >= 2 ? 'pointer' : 'not-allowed',
+                    fontSize: isMobile ? '12px' : '14px',
+                    transition: 'all 0.3s ease'
+                  }}
                 >
                   對比分析 ({selectedRecords.length})
                 </button>
                 <button 
                   className="btn-cancel"
                   onClick={handleCancelCompare}
+                  style={{
+                    padding: isMobile ? '8px 12px' : '10px 16px',
+                    background: 'linear-gradient(145deg, rgba(255, 0, 0, 0.2), rgba(255, 0, 0, 0.3))',
+                    border: '1px solid rgba(255, 0, 0, 0.5)',
+                    borderRadius: '6px',
+                    color: '#ff4444',
+                    cursor: 'pointer',
+                    fontSize: isMobile ? '12px' : '14px',
+                    transition: 'all 0.3s ease'
+                  }}
                 >
                   取消
                 </button>
@@ -266,9 +357,22 @@ const MotionDashboard = () => {
       </div>
 
       {/* Overview Stats */}
-      <div className="overview-section">
-        <h2>訓練概覽</h2>
-        <div className="stats-grid">
+      <div className="overview-section" style={{ marginBottom: '40px' }}>
+        <h2 style={{
+          fontSize: isMobile ? '18px' : '24px',
+          color: '#00ffff',
+          textShadow: '0 0 10px rgba(0, 255, 255, 0.3)',
+          marginBottom: '20px',
+          borderBottom: '2px solid rgba(0, 255, 255, 0.3)',
+          paddingBottom: '8px'
+        }}>
+          📈 訓練概覽
+        </h2>
+        <div className="stats-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: isMobile ? '12px' : '20px'
+        }}>
           <StatCard 
             title="總訓練次數" 
             value={stats.totalTrainings} 
@@ -321,9 +425,22 @@ const MotionDashboard = () => {
       </div>
 
       {/* Trend Charts */}
-      <div className="trends-section">
-        <h2>趨勢分析</h2>
-        <div className="charts-grid">
+      <div className="trends-section" style={{ marginBottom: '40px' }}>
+        <h2 style={{
+          fontSize: isMobile ? '18px' : '24px',
+          color: '#00ffff',
+          textShadow: '0 0 10px rgba(0, 255, 255, 0.3)',
+          marginBottom: '20px',
+          borderBottom: '2px solid rgba(0, 255, 255, 0.3)',
+          paddingBottom: '8px'
+        }}>
+          📊 趨勢分析
+        </h2>
+        <div className="charts-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: isMobile ? '15px' : '25px'
+        }}>
           <TrendChart 
             data={trainingData}
             metric="centerMoveAvg"
@@ -353,12 +470,36 @@ const MotionDashboard = () => {
 
       {/* Training Records */}
       <div className="records-section">
-        <h2>訓練紀錄</h2>
-        <div className="records-list">
+        <h2 style={{
+          fontSize: isMobile ? '18px' : '24px',
+          color: '#00ffff',
+          textShadow: '0 0 10px rgba(0, 255, 255, 0.3)',
+          marginBottom: '20px',
+          borderBottom: '2px solid rgba(0, 255, 255, 0.3)',
+          paddingBottom: '8px'
+        }}>
+          🎯 訓練紀錄
+        </h2>
+        <div className="records-list" style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: isMobile ? '10px' : '15px'
+        }}>
           {trainingData.map(record => (
             <div 
               key={record.id}
               className={`record-wrapper ${compareMode && selectedRecords.includes(record.id) ? 'selected' : ''}`}
+              style={{
+                position: 'relative',
+                background: compareMode && selectedRecords.includes(record.id) 
+                  ? 'rgba(0, 255, 255, 0.1)' 
+                  : 'transparent',
+                borderRadius: '8px',
+                border: compareMode && selectedRecords.includes(record.id) 
+                  ? '2px solid rgba(0, 255, 255, 0.5)' 
+                  : 'none',
+                padding: compareMode && selectedRecords.includes(record.id) ? '4px' : '0'
+              }}
             >
               <TrainingRecord
                 record={record}
@@ -367,11 +508,21 @@ const MotionDashboard = () => {
                 isMobile={isMobile}
               />
               {compareMode && (
-                <div className="compare-checkbox">
+                <div className="compare-checkbox" style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  zIndex: 10
+                }}>
                   <input
                     type="checkbox"
                     checked={selectedRecords.includes(record.id)}
                     onChange={() => handleCompareTraining(record.id)}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      accentColor: '#00ffff'
+                    }}
                   />
                 </div>
               )}

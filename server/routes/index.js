@@ -4,6 +4,7 @@ const router = express.Router();
 // API 路由
 router.use('/motions', require('./motions'));
 router.use('/annotations', require('./annotations'));
+router.use('/dashboard', require('./dashboard'));
 // router.use('/auth', require('./auth'));
 // router.use('/sessions', require('./sessions'));
 // router.use('/files', require('./files'));

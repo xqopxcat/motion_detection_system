@@ -102,6 +102,8 @@ function Navigation() {
     switch (path) {
       case '/':
         return '🎯'
+      case '/dashboard':
+        return '📊'
       case '/motion':
         return '👁️'
       default:
@@ -128,6 +130,15 @@ function Navigation() {
         </button>
 
         <ul style={navListStyle}>
+          <li>
+            <Link
+              to="/dashboard"
+              style={location.pathname === '/dashboard' ? activeLinkStyle : linkStyle}
+            >
+              <span style={iconStyle}>{getIcon('/dashboard')}</span>
+              <span style={textStyle}>Motion Dashboard</span>
+            </Link>
+          </li>
           <li>
             <Link
               to="/"

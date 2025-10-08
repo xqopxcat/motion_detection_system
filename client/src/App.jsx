@@ -4,6 +4,7 @@ import Navigation from './components/Navigation'
 import MotionDetection from './pages/MotionDetection'
 import MotionViewer from './pages/MotionViewer'
 import MotionList from "./pages/MotionList"
+import MotionDashboard from "./pages/MotionDashboard"
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Navigation />
         <Routes>
           <Route path="/" element={<MotionDetection />} />
+          <Route path="/dashboard" element={<MotionDashboard />} />
           <Route path="/motion" element={<MotionList />} />
           <Route path="/motion/:id" element={<MotionViewer />} />
         </Routes>

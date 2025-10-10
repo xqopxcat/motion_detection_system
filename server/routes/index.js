@@ -5,7 +5,7 @@ const router = express.Router();
 router.use('/motions', require('./motions'));
 router.use('/annotations', require('./annotations'));
 router.use('/dashboard', require('./dashboard'));
-// router.use('/auth', require('./auth'));
+router.use('/auth', require('./auth'));
 // router.use('/sessions', require('./sessions'));
 // router.use('/files', require('./files'));
 // router.use('/analytics', require('./analytics'));

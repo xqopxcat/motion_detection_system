@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDeviceDetection } from '../../hooks/useDeviceDetection';
 
-const GoogleAuthButton = ({ mode = 'login', onLoading }) => {
+const GoogleAuthButton = ({ mode = 'login', onLoading, onError }) => {
   const { isMobile } = useDeviceDetection();
   const [loading, setLoading] = useState(false);
 
@@ -9,9 +9,25 @@ const GoogleAuthButton = ({ mode = 'login', onLoading }) => {
     setLoading(true);
     onLoading?.(true);
     
-    // 根據模式決定重定向到註冊或登入
-    const authType = mode === 'register' ? 'register' : 'login';
-    window.location.href = `/api/auth/google?type=${authType}`;
+    try {
+      // 根據模式決定重定向到註冊或登入
+      const authType = mode === 'register' ? 'register' : 'login';
+      
+      // 檢查後端服務是否可用
+      const backendUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const authUrl = `${backendUrl}/api/auth/google?type=${authType}`;
+
+      console.log('開始 Google 認證:', authUrl);
+      
+      // 重定向到 Google OAuth
+      window.location.href = authUrl;
+      
+    } catch (error) {
+      console.error('Google Auth 啟動失敗:', error);
+      setLoading(false);
+      onLoading?.(false);
+      onError?.('無法啟動 Google 認證，請稍後再試');
+    }
   };
 
   return (
@@ -70,6 +86,13 @@ const GoogleAuthButton = ({ mode = 'login', onLoading }) => {
           {mode === 'register' ? '使用 Google 註冊' : '使用 Google 登入'}
         </>
       )}
+      
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </button>
   );
 };

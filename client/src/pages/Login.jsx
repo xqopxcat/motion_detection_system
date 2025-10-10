@@ -6,46 +6,23 @@ import GoogleAuthButton from '../components/Auth/GoogleAuthButton';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { isMobile } = useDeviceDetection();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // 如果已經登入，重定向到 dashboard
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated && user) {
       navigate('/dashboard');
     }
-  }, [user, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
-  // 處理 Google OAuth 回調
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const userParam = urlParams.get('user');
-    const errorParam = urlParams.get('error');
-
-    if (token && userParam) {
-      try {
-        const userData = JSON.parse(decodeURIComponent(userParam));
-        login(userData, token);
-        
-        // 清除 URL 參數
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        navigate('/dashboard');
-      } catch (error) {
-        console.error('Login callback error:', error);
-        setError('登入過程中發生錯誤');
-      }
-    } else if (errorParam) {
-      setError(decodeURIComponent(errorParam));
-      // 清除 URL 參數
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-    
+  // 處理 Google Auth 錯誤
+  const handleGoogleAuthError = (errorMessage) => {
+    setError(errorMessage);
     setLoading(false);
-  }, [login, navigate]);
+  };
 
   return (
     <div style={{
@@ -106,6 +83,19 @@ const Login = () => {
             textAlign: 'center'
           }}>
             ⚠️ {error}
+            <button 
+              onClick={() => setError('')}
+              style={{
+                float: 'right',
+                background: 'none',
+                border: 'none',
+                color: '#ff6b6b',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              ×
+            </button>
           </div>
         )}
 
@@ -113,6 +103,7 @@ const Login = () => {
         <GoogleAuthButton 
           mode="login" 
           onLoading={setLoading}
+          onError={handleGoogleAuthError}
         />
 
         {/* Divider */}
@@ -152,14 +143,6 @@ const Login = () => {
               display: 'inline-block',
               transition: 'all 0.3s ease'
             }}
-            onMouseEnter={(e) => {
-              e.target.style.background = 'rgba(0, 255, 255, 0.1)';
-              e.target.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'transparent';
-              e.target.style.transform = 'translateY(0)';
-            }}
           >
             立即註冊
           </Link>
@@ -193,25 +176,11 @@ const Login = () => {
               cursor: 'pointer',
               transition: 'all 0.3s ease'
             }}
-            onMouseEnter={(e) => {
-              e.target.style.background = 'rgba(0, 255, 255, 0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'rgba(0, 255, 255, 0.1)';
-            }}
           >
             訪客模式體驗
           </button>
         </div>
       </div>
-
-      {/* CSS Animation */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+// server/middleware/auth.js
 const jwt = require('jsonwebtoken');
 const { User } = require('../mongodb/models');
 
@@ -18,7 +19,7 @@ const auth = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid token.'
+        message: 'Invalid token. User not found.'
       });
     }
 
@@ -26,9 +27,24 @@ const auth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
-    res.status(401).json({
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token.'
+      });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired.'
+      });
+    }
+    
+    res.status(500).json({
       success: false,
-      message: 'Invalid token.'
+      message: 'Server error during authentication.'
     });
   }
 };

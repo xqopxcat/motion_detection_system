@@ -211,7 +211,7 @@ class MotionAnalysis {
 
 // API 路由
 // GET /api/dashboard/overview - 獲取訓練概覽數據
-router.get('/overview', async (req, res) => {
+router.get('/overview', auth, async (req, res) => {
   try {
     const { period = '30d' } = req.query;
     const days = parseInt(period.replace('d', ''));

@@ -1,9 +1,17 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { getAuthHeaders } from '../../utils/auth';
 
 export const dashboardCoreApi = createApi({
     reducerPath: 'dashboardCoreApi',
     baseQuery: fetchBaseQuery({
         baseUrl: `${import.meta.env.VITE_API_BASE_URL}/api/dashboard/`,
+        prepareHeaders: (headers) => {
+            const authHeaders = getAuthHeaders();
+            Object.entries(authHeaders).forEach(([key, value]) => {
+                headers.set(key, value);
+            });
+            return headers;
+        }
     }),
     tagTypes: ['Dashboard'],
     endpoints: (builder) => ({

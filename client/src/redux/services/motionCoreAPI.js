@@ -1,9 +1,17 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { getAuthHeaders } from '../../utils/auth';
 
 export const motionCoreApi = createApi({
     reducerPath: 'motionCoreApi',
     baseQuery: fetchBaseQuery({
         baseUrl: `${import.meta.env.VITE_API_BASE_URL}/api/`,
+        prepareHeaders: (headers) => {
+            const authHeaders = getAuthHeaders();
+            Object.entries(authHeaders).forEach(([key, value]) => {
+                headers.set(key, value);
+            });
+            return headers;
+        }
     }),
     tagTypes: ['Motion', 'Annotations'],
     endpoints: (builder) => ({

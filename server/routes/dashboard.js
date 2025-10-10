@@ -218,7 +218,7 @@ router.get('/overview', auth, async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const motions = await Motion.find({
-      userId: req.user.id,
+      userId: req.user?._id,
       createdAt: { $gte: startDate },
       frameData: { $exists: true, $ne: [] }
     }).sort({ createdAt: -1 });
@@ -322,7 +322,7 @@ router.get('/training-records', auth, async (req, res) => {
     const sortOrder = order === 'desc' ? -1 : 1;
 
     const motions = await Motion.find({
-      userId: req.user.id,
+      userId: req.user?._id,
       createdAt: { $gte: startDate },
       frameData: { $exists: true, $ne: [] }
     })
@@ -331,7 +331,7 @@ router.get('/training-records', auth, async (req, res) => {
     .limit(parseInt(limit));
 
     const total = await Motion.countDocuments({
-      userId: req.user.id,
+      userId: req.user?._id,
       createdAt: { $gte: startDate },
       frameData: { $exists: true, $ne: [] }
     });
@@ -398,7 +398,7 @@ router.get('/trends', auth, async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
 
     const motions = await Motion.find({
-      userId: req.user.id,
+      userId: req.user?._id,
       createdAt: { $gte: startDate },
       frameData: { $exists: true, $ne: [] }
     }).sort({ createdAt: 1 });

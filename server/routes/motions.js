@@ -69,7 +69,9 @@ router.get('/health/check', async (req, res) => {
 // GET /api/motions - 獲取動作列表
 router.get('/', auth, async (req, res) => {
     try {
-        const motions = await Motions.find({});
+        const motions = await Motions.find({ 
+            userId: req.user?._id
+        });
         console.log('Motions fetched:', motions.length);
         res.status(200).json({
             success: true,
@@ -139,7 +141,7 @@ router.post('/', auth, uploadMotionFiles, async (req, res) => {
     const sessionId = uuidv4();
     const motions = new Motions({
       sessionId,
-      userId: req.user?.id || null,
+      userId: req.user?._id,
       title: title || `動作記錄 ${new Date().toLocaleDateString()}`,
       description: description || '',
       videoFileName: videoFile.originalname,

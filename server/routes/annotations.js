@@ -33,7 +33,7 @@ router.post('/', auth, async (req, res) => {
       text,
       category: category || 'general',
       color: color || '#00ff00',
-      userId: req.user?.id || null
+      userId: req.user?._id
     });
 
     await annotation.save();

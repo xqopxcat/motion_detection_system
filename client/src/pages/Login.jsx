@@ -46,12 +46,6 @@ const Login = () => {
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{
-            fontSize: isMobile ? '36px' : '48px',
-            marginBottom: '10px'
-          }}>
-            🏃‍♂️
-          </div>
           <h1 style={{
             fontSize: isMobile ? '24px' : '28px',
             color: '#00ffff',
@@ -59,14 +53,14 @@ const Login = () => {
             margin: '0 0 8px 0',
             letterSpacing: '1px'
           }}>
-            歡迎回來
+            歡迎使用
           </h1>
           <p style={{
             color: '#cccccc',
             fontSize: isMobile ? '14px' : '16px',
             margin: '0'
           }}>
-            登入您的帳戶開始分析運動表現
+            使用 Google 帳戶開始分析運動表現
           </p>
         </div>
 
@@ -105,9 +99,24 @@ const Login = () => {
           onLoading={setLoading}
           onError={handleGoogleAuthError}
         />
+        
+           {/* 說明文字 */}
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '20px'
+        }}>
+          <p style={{ 
+            color: '#aaaaaa', 
+            fontSize: '13px',
+            margin: '0',
+            lineHeight: '1.5'
+          }}>
+            首次使用？使用 Google 帳戶登入會自動為您建立帳戶
+          </p>
+        </div>
 
         {/* Divider */}
-        <div style={{
+        {/* <div style={{
           display: 'flex',
           alignItems: 'center',
           margin: '20px 0',
@@ -116,10 +125,10 @@ const Login = () => {
           <div style={{ flex: 1, height: '1px', background: 'rgba(0, 255, 255, 0.2)' }}></div>
           <span style={{ margin: '0 15px', fontSize: '14px' }}>或</span>
           <div style={{ flex: 1, height: '1px', background: 'rgba(0, 255, 255, 0.2)' }}></div>
-        </div>
+        </div> */}
 
         {/* Register Link */}
-        <div style={{
+        {/* <div style={{
           textAlign: 'center',
           marginBottom: '20px'
         }}>
@@ -146,10 +155,10 @@ const Login = () => {
           >
             立即註冊
           </Link>
-        </div>
+        </div> */}
 
         {/* Demo Access */}
-        <div style={{
+        {/* <div style={{
           padding: '15px',
           background: 'rgba(0, 255, 255, 0.05)',
           border: '1px solid rgba(0, 255, 255, 0.2)',
@@ -179,7 +188,7 @@ const Login = () => {
           >
             訪客模式體驗
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

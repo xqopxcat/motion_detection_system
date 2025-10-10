@@ -10,16 +10,14 @@ const GoogleAuthButton = ({ mode = 'login', onLoading, onError }) => {
     onLoading?.(true);
     
     try {
-      // 根據模式決定重定向到註冊或登入
       const authType = mode === 'register' ? 'register' : 'login';
       
-      // 檢查後端服務是否可用
-      const backendUrl = import.meta.env.VITE_API_BASE_URL || '';
+      // 使用完整的 API URL
+      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
       const authUrl = `${backendUrl}/api/auth/google?type=${authType}`;
 
       console.log('開始 Google 認證:', authUrl);
       
-      // 重定向到 Google OAuth
       window.location.href = authUrl;
       
     } catch (error) {

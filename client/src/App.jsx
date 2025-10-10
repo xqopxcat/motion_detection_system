@@ -39,45 +39,53 @@ function App() {
             <Route 
               path="/dashboard" 
               element={
-                <div style={{ display: 'flex' }}>
-                  <Navigation />
-                  <div style={{ flex: 1 }}>
-                    <MotionDashboard />
+                <ProtectedRoute requireAuth={true}>
+                  <div style={{ display: 'flex' }}>
+                    <Navigation />
+                    <div style={{ flex: 1 }}>
+                      <MotionDashboard />
+                    </div>
                   </div>
-                </div>
+                </ProtectedRoute>
               } 
             />
             <Route 
               path="/detection" 
               element={
-                <div style={{ display: 'flex' }}>
-                  <Navigation />
-                  <div style={{ flex: 1 }}>
-                    <MotionDetection />
+                <ProtectedRoute requireAuth={true}>
+                  <div style={{ display: 'flex' }}>
+                    <Navigation />
+                    <div style={{ flex: 1 }}>
+                      <MotionDetection />
+                    </div>
                   </div>
-                </div>
+                </ProtectedRoute>
               } 
             />
             <Route 
               path="/motion" 
               element={
-                <div style={{ display: 'flex' }}>
-                  <Navigation />
-                  <div style={{ flex: 1 }}>
-                    <MotionList />
+                <ProtectedRoute requireAuth={true}>
+                  <div style={{ display: 'flex' }}>
+                    <Navigation />
+                    <div style={{ flex: 1 }}>
+                      <MotionList />
+                    </div>
                   </div>
-                </div>
+                </ProtectedRoute>
               } 
             />
             <Route 
               path="/motion/:id" 
               element={
-                <div style={{ display: 'flex' }}>
-                  <Navigation />
-                  <div style={{ flex: 1 }}>
-                    <MotionViewer />
+                <ProtectedRoute requireAuth={true}>
+                  <div style={{ display: 'flex' }}>
+                    <Navigation />
+                    <div style={{ flex: 1 }}>
+                      <MotionViewer />
+                    </div>
                   </div>
-                </div>
+                </ProtectedRoute>
               } 
             />
             <Route 

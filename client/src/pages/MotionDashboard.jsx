@@ -1,71 +1,48 @@
+// client/src/pages/MotionDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useDeviceDetection } from '../hooks/useDeviceDetection';
+import { getAuthHeaders } from '../utils/auth';
 import './MotionDashboard.scss';
 
-// 模擬數據 - 實際使用時應該從 API 獲取
-const mockTrainingData = [
-  {
-    id: '1',
-    date: '2025-10-01',
-    name: '籃球投籃訓練 #1',
-    duration: 120,
-    centerMoveAvg: 2.3,
-    centerMoveMax: 5.8,
-    inclinationAvg: 12.5,
-    stabilityScore: 85,
-    jointDeviation: 8.2,
-    videoUrl: '/videos/training1.mp4',
-    annotations: 12
-  },
-  {
-    id: '2',
-    date: '2025-10-02',
-    name: '籃球投籃訓練 #2',
-    duration: 135,
-    centerMoveAvg: 2.1,
-    centerMoveMax: 4.9,
-    inclinationAvg: 11.8,
-    stabilityScore: 88,
-    jointDeviation: 7.5,
-    videoUrl: '/videos/training2.mp4',
-    annotations: 8
-  },
-  {
-    id: '3',
-    date: '2025-10-03',
-    name: '籃球投籃訓練 #3',
-    duration: 145,
-    centerMoveAvg: 1.9,
-    centerMoveMax: 4.2,
-    inclinationAvg: 10.5,
-    stabilityScore: 92,
-    jointDeviation: 6.8,
-    videoUrl: '/videos/training3.mp4',
-    annotations: 15
-  }
-];
-
-const StatCard = ({ title, value, unit, trend, isMobile }) => (
-  <div className={`stat-card ${isMobile ? 'mobile' : ''}`}>
+const StatCard = ({ title, value, unit, trend, isMobile, loading }) => (
+  <div className={`stat-card ${isMobile ? 'mobile' : ''} ${loading ? 'loading' : ''}`}>
     <div className="stat-header">
       <h3>{title}</h3>
-      {trend && (
+      {trend !== undefined && !loading && (
         <span className={`trend ${trend > 0 ? 'up' : 'down'}`}>
           {trend > 0 ? '↗' : '↘'} {Math.abs(trend)}%
         </span>
       )}
     </div>
     <div className="stat-value">
-      {value} <span className="unit">{unit}</span>
+      {loading ? (
+        <div className="loading-spinner">⟳</div>
+      ) : (
+        <>
+          {value} <span className="unit">{unit}</span>
+        </>
+      )}
     </div>
   </div>
 );
 
 const TrendChart = ({ data, metric, title, isMobile }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className={`trend-chart ${isMobile ? 'mobile' : ''}`}>
+        <h3>{title}</h3>
+        <div className="no-data">
+          📊 暫無數據
+        </div>
+      </div>
+    );
+  }
+
   const maxValue = Math.max(...data.map(d => d[metric]));
   const minValue = Math.min(...data.map(d => d[metric]));
-  const range = maxValue - minValue;
+  const range = maxValue - minValue || 1;
 
   return (
     <div className={`trend-chart ${isMobile ? 'mobile' : ''}`}>
@@ -147,7 +124,7 @@ const TrainingRecord = ({ record, onView, onCompare, isMobile }) => (
     <div className="record-metrics">
       <div className="metric">
         <span className="label">重心移動</span>
-        <span className="value">{record.centerMoveAvg}m</span>
+        <span className="value">{record.centerMoveAvg}cm</span>
       </div>
       <div className="metric">
         <span className="label">傾斜角</span>
@@ -158,13 +135,19 @@ const TrainingRecord = ({ record, onView, onCompare, isMobile }) => (
         <span className="value">{record.stabilityScore}%</span>
       </div>
       <div className="metric">
-        <span className="label">註解</span>
-        <span className="value">{record.annotations}</span>
+        <span className="label">狀態</span>
+        <span className={`value status-${record.status}`}>
+          {record.status === 'completed' ? '✅ 完成' : 
+           record.status === 'processing' ? '⏳ 處理中' : 
+           '❌ 失敗'}
+        </span>
       </div>
     </div>
     
     <div className="record-footer">
-      <span className="duration">時長: {Math.floor(record.duration / 60)}:{(record.duration % 60).toString().padStart(2, '0')}</span>
+      <span className="duration">
+        時長: {Math.floor(record.duration / 60)}:{(record.duration % 60).toString().padStart(2, '0')}
+      </span>
       <div className="progress-bar">
         <div 
           className="progress-fill" 
@@ -177,9 +160,12 @@ const TrainingRecord = ({ record, onView, onCompare, isMobile }) => (
 
 const MotionDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { isMobile } = useDeviceDetection();
   const [selectedPeriod, setSelectedPeriod] = useState('7d');
-  const [trainingData, setTrainingData] = useState(mockTrainingData);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [compareMode, setCompareMode] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
   const [isNavExpanded, setIsNavExpanded] = useState(false);
@@ -194,31 +180,56 @@ const MotionDashboard = () => {
     return () => window.removeEventListener('navToggle', handleNavToggle);
   }, []);
 
+  // 獲取儀表板數據
+  const fetchDashboardData = async (period = selectedPeriod) => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+      const response = await fetch(`${apiUrl}/api/dashboard/stats?period=${period}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setDashboardData(result.data);
+        console.log('📊 Dashboard 數據載入成功:', result.data);
+      } else {
+        throw new Error(result.message || '獲取數據失敗');
+      }
+    } catch (error) {
+      console.error('❌ 獲取 Dashboard 數據失敗:', error);
+      setError('載入數據失敗，請重試');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 初始載入和期間變更時重新獲取數據
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user, selectedPeriod]);
+
   // 計算動態邊距
   const getMarginLeft = () => {
     if (isMobile) return '0px';
     return isNavExpanded ? '200px' : '40px';
   };
 
-  // 計算統計數據
-  const stats = {
-    totalTrainings: trainingData.length,
-    avgCenterMove: (trainingData.reduce((sum, d) => sum + d.centerMoveAvg, 0) / trainingData.length).toFixed(1),
-    maxCenterMove: Math.max(...trainingData.map(d => d.centerMoveMax)).toFixed(1),
-    avgInclination: (trainingData.reduce((sum, d) => sum + d.inclinationAvg, 0) / trainingData.length).toFixed(1),
-    avgStability: Math.round(trainingData.reduce((sum, d) => sum + d.stabilityScore, 0) / trainingData.length),
-    avgJointDeviation: (trainingData.reduce((sum, d) => sum + d.jointDeviation, 0) / trainingData.length).toFixed(1),
-    centerMoveVariance: calculateVariance(trainingData.map(d => d.centerMoveAvg)).toFixed(2)
+  const handlePeriodChange = (newPeriod) => {
+    setSelectedPeriod(newPeriod);
   };
 
-  function calculateVariance(values) {
-    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
-    return variance;
-  }
-
   const handleViewTraining = (id) => {
-    navigate(`/motion-viewer/${id}`);
+    navigate(`/motion/${id}`);
   };
 
   const handleCompareTraining = (id) => {
@@ -244,6 +255,73 @@ const MotionDashboard = () => {
     setCompareMode(false);
     setSelectedRecords([]);
   };
+
+  // 如果載入中且沒有數據，顯示載入畫面
+  if (loading && !dashboardData) {
+    return (
+      <div style={{
+        marginLeft: getMarginLeft(),
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(26, 26, 46, 0.95) 50%, rgba(22, 33, 62, 0.9) 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#00ffff'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🏃‍♂️</div>
+          <div style={{ fontSize: '18px' }}>載入儀表板數據中...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果有錯誤，顯示錯誤訊息
+  if (error && !dashboardData) {
+    return (
+      <div style={{
+        marginLeft: getMarginLeft(),
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, rgba(10, 10, 10, 0.95) 0%, rgba(26, 26, 46, 0.95) 50%, rgba(22, 33, 62, 0.9) 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#ff6b6b'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>❌</div>
+          <div style={{ fontSize: '18px', marginBottom: '20px' }}>{error}</div>
+          <button 
+            onClick={() => fetchDashboardData()}
+            style={{
+              padding: '10px 20px',
+              background: 'rgba(0, 255, 255, 0.2)',
+              border: '1px solid rgba(0, 255, 255, 0.5)',
+              borderRadius: '6px',
+              color: '#00ffff',
+              cursor: 'pointer'
+            }}
+          >
+            重試
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 準備統計數據
+  const stats = dashboardData ? {
+    totalTrainings: dashboardData.periodMotions || 0,
+    avgCenterMove: dashboardData.avgCenterMove || 0,
+    maxCenterMove: dashboardData.maxCenterMove || 0,
+    avgInclination: dashboardData.avgInclination || 0,
+    avgStability: dashboardData.avgStability || 0,
+    avgJointDeviation: dashboardData.avgJointDeviation || 0,
+    centerMoveVariance: dashboardData.centerMoveVariance || 0
+  } : {};
+
+  const trainingData = dashboardData?.trendsData || [];
+  const recentMotions = dashboardData?.recentMotions || [];
 
   return (
     <div 
@@ -281,10 +359,23 @@ const MotionDashboard = () => {
           <p style={{
             color: '#cccccc',
             fontSize: isMobile ? '14px' : '16px',
-            margin: '0'
+            margin: '0 0 5px 0'
           }}>
-            分析您的運動表現與進步軌跡
+            歡迎回來，{user?.username || '用戶'}！分析您的運動表現與進步軌跡
           </p>
+          {dashboardData && (
+            <p style={{
+              color: '#aaaaaa',
+              fontSize: isMobile ? '12px' : '14px',
+              margin: '0'
+            }}>
+              期間：{selectedPeriod === '7d' ? '最近 7 天' : 
+                     selectedPeriod === '30d' ? '最近 30 天' : '最近 90 天'} | 
+              總記錄：{dashboardData.totalMotions} 筆 | 
+              期間記錄：{dashboardData.periodMotions} 筆
+            </p>
+          )}
+          
           <div className="header-controls" style={{
             display: 'flex',
             gap: '15px',
@@ -294,7 +385,7 @@ const MotionDashboard = () => {
           }}>
             <select 
               value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
+              onChange={(e) => handlePeriodChange(e.target.value)}
               className="period-selector"
               style={{
                 background: 'rgba(0, 0, 0, 0.5)',
@@ -310,6 +401,7 @@ const MotionDashboard = () => {
               <option value="30d">最近 30 天</option>
               <option value="90d">最近 90 天</option>
             </select>
+            
             {compareMode && (
               <div className="compare-controls" style={{
                 display: 'flex',
@@ -374,52 +466,53 @@ const MotionDashboard = () => {
           gap: isMobile ? '12px' : '20px'
         }}>
           <StatCard 
-            title="總訓練次數" 
+            title="期間訓練次數" 
             value={stats.totalTrainings} 
             unit="次" 
             isMobile={isMobile}
+            loading={loading}
           />
           <StatCard 
             title="重心移動平均" 
             value={stats.avgCenterMove} 
-            unit="m" 
-            trend={-5.2}
+            unit="cm" 
             isMobile={isMobile}
+            loading={loading}
           />
           <StatCard 
             title="重心移動最大值" 
             value={stats.maxCenterMove} 
-            unit="m" 
-            trend={-12.8}
+            unit="cm" 
             isMobile={isMobile}
+            loading={loading}
           />
           <StatCard 
             title="重心移動變異" 
             value={stats.centerMoveVariance} 
             unit="" 
-            trend={-8.1}
             isMobile={isMobile}
+            loading={loading}
           />
           <StatCard 
             title="傾斜角平均" 
             value={stats.avgInclination} 
             unit="°" 
-            trend={-15.3}
             isMobile={isMobile}
+            loading={loading}
           />
           <StatCard 
             title="姿態穩定性" 
             value={stats.avgStability} 
             unit="%" 
-            trend={8.2}
             isMobile={isMobile}
+            loading={loading}
           />
           <StatCard 
             title="關節角度偏差" 
             value={stats.avgJointDeviation} 
             unit="°" 
-            trend={-17.1}
             isMobile={isMobile}
+            loading={loading}
           />
         </div>
       </div>
@@ -478,57 +571,88 @@ const MotionDashboard = () => {
           borderBottom: '2px solid rgba(0, 255, 255, 0.3)',
           paddingBottom: '8px'
         }}>
-          🎯 訓練紀錄
+          🎯 最近訓練紀錄
         </h2>
-        <div className="records-list" style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: isMobile ? '10px' : '15px'
-        }}>
-          {trainingData.map(record => (
-            <div 
-              key={record.id}
-              className={`record-wrapper ${compareMode && selectedRecords.includes(record.id) ? 'selected' : ''}`}
+        
+        {recentMotions.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            color: '#aaaaaa',
+            background: 'rgba(0, 0, 0, 0.3)',
+            borderRadius: '12px',
+            border: '1px solid rgba(0, 255, 255, 0.2)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📊</div>
+            <h3 style={{ margin: '0 0 10px 0' }}>暫無訓練記錄</h3>
+            <p style={{ margin: '0 0 20px 0' }}>開始您的第一次運動分析吧！</p>
+            <button
+              onClick={() => navigate('/detection')}
               style={{
-                position: 'relative',
-                background: compareMode && selectedRecords.includes(record.id) 
-                  ? 'rgba(0, 255, 255, 0.1)' 
-                  : 'transparent',
+                padding: '12px 24px',
+                background: 'linear-gradient(145deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.3))',
+                border: '1px solid rgba(0, 255, 255, 0.5)',
                 borderRadius: '8px',
-                border: compareMode && selectedRecords.includes(record.id) 
-                  ? '2px solid rgba(0, 255, 255, 0.5)' 
-                  : 'none',
-                padding: compareMode && selectedRecords.includes(record.id) ? '4px' : '0'
+                color: '#00ffff',
+                cursor: 'pointer',
+                fontSize: '16px',
+                transition: 'all 0.3s ease'
               }}
             >
-              <TrainingRecord
-                record={record}
-                onView={handleViewTraining}
-                onCompare={handleCompareTraining}
-                isMobile={isMobile}
-              />
-              {compareMode && (
-                <div className="compare-checkbox" style={{
-                  position: 'absolute',
-                  top: '10px',
-                  right: '10px',
-                  zIndex: 10
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={selectedRecords.includes(record.id)}
-                    onChange={() => handleCompareTraining(record.id)}
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      accentColor: '#00ffff'
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+              開始動作檢測
+            </button>
+          </div>
+        ) : (
+          <div className="records-list" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: isMobile ? '10px' : '15px'
+          }}>
+            {recentMotions.map(record => (
+              <div 
+                key={record.id}
+                className={`record-wrapper ${compareMode && selectedRecords.includes(record.id) ? 'selected' : ''}`}
+                style={{
+                  position: 'relative',
+                  background: compareMode && selectedRecords.includes(record.id) 
+                    ? 'rgba(0, 255, 255, 0.1)' 
+                    : 'transparent',
+                  borderRadius: '8px',
+                  border: compareMode && selectedRecords.includes(record.id) 
+                    ? '2px solid rgba(0, 255, 255, 0.5)' 
+                    : 'none',
+                  padding: compareMode && selectedRecords.includes(record.id) ? '4px' : '0'
+                }}
+              >
+                <TrainingRecord
+                  record={record}
+                  onView={handleViewTraining}
+                  onCompare={handleCompareTraining}
+                  isMobile={isMobile}
+                />
+                {compareMode && (
+                  <div className="compare-checkbox" style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    zIndex: 10
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedRecords.includes(record.id)}
+                      onChange={() => handleCompareTraining(record.id)}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        accentColor: '#00ffff'
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -526,6 +526,53 @@
   }
 }
 
+// client/src/pages/MotionDashboard.scss
+
+.stat-card {
+  &.loading {
+    opacity: 0.7;
+    
+    .loading-spinner {
+      animation: spin 1s linear infinite;
+      font-size: 24px;
+      color: #00ffff;
+    }
+  }
+}
+
+.trend-chart {
+  .no-data {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 150px;
+    color: #aaaaaa;
+    font-size: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px dashed rgba(0, 255, 255, 0.3);
+  }
+}
+
+.training-record {
+  .status-completed {
+    color: #00ff00;
+  }
+  
+  .status-processing {
+    color: #ffaa00;
+  }
+  
+  .status-failed {
+    color: #ff6b6b;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 // Loading and Animation States
 @keyframes slideInUp {
   from {

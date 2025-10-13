@@ -41,7 +41,6 @@ const POSE_CONNECTIONS = [
     // [0, 2],   // nose(index 0) - right_shoulder(index 2)
 ];
 
-// 15 個關節點名稱（按照您數據中的順序）
 const JOINT_NAMES = [
     'nose',           // index 0 (MediaPipe index 0)
     'left_shoulder',  // index 1 (MediaPipe index 11)

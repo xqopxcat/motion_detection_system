@@ -584,8 +584,8 @@ function animate({
             const neckPos = neck.getWorldPosition(new THREE.Vector3());
             const axisDir = new THREE.Vector3().subVectors(neckPos, hipsPos).normalize();
             const axisLength = hipsPos.distanceTo(neckPos);
-            const xAxis = new THREE.Vector3(1, 0, 0);
-            const inclination = axisDir.angleTo(xAxis) * 180 / Math.PI;
+            const yAxis = new THREE.Vector3(0, 1, 0);
+            const inclination = axisDir.angleTo(yAxis) * 180 / Math.PI;
             const nowFrame = Math.max(0, frameRef.current);
             const prevFrame = Math.max(0, nowFrame - 1);
 

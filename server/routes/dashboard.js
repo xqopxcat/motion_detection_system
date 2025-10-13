@@ -74,7 +74,6 @@ router.get('/stats', auth, async (req, res) => {
 
     // 計算統計指標
     const stats = await calculateAdvancedStats(userId, startDate, now);
-
     res.json({
       success: true,
       data: {
@@ -86,7 +85,6 @@ router.get('/stats', auth, async (req, res) => {
         
         // 進階統計
         ...stats,
-        
         // 最近記錄
         recentMotions: recentMotions.map(motion => ({
           id: motion.sessionId,
@@ -278,39 +276,117 @@ function calculateCenterMoveStats(frameData) {
 }
 
 // 計算傾斜角統計
+// 修正的 calculateInclinationStats 函數
 function calculateInclinationStats(frameData) {
   if (!frameData || frameData.length === 0) return null;
   
   try {
     const inclinations = [];
     
-    frameData.forEach(frame => {
-      if (frame.pose && frame.pose.length >= 16) {
-        // 使用肩膀關鍵點計算傾斜角 (關鍵點 11, 12)
-        const leftShoulder = frame.pose[11];  // 左肩
-        const rightShoulder = frame.pose[12]; // 右肩
+    frameData.forEach((frame, i) => {
+      // 🔧 檢查多種可能的數據結構
+      let landmarks = null;
+      
+      if (frame.landmarks3D && frame.landmarks3D.length > 0) {
+        landmarks = frame.landmarks3D;
+      } else if (frame.pose && frame.pose.length > 0) {
+        landmarks = frame.pose;
+      } else {
+        return; // 跳過這一幀
+      }
+      
+      let nosePoint, hipsPoint;
+      
+      // 嘗試獲取鼻子位置
+      if (landmarks[0] && landmarks[0].visibility > 0.5) {
+        nosePoint = landmarks[0];
+      }
+      
+      // 計算髖部中心位置（類似 MotionViewer 中的 hips）
+      if (landmarks[7] && landmarks[8]) {
+        hipsPoint = {
+          x: (landmarks[7].x + landmarks[8].x) / 2,
+          y: (landmarks[7].y + landmarks[8].y) / 2,
+          z: ((landmarks[7].z || 0) + (landmarks[8].z || 0)) / 2,
+          visibility: Math.min(landmarks[7].visibility, landmarks[8].visibility)
+        };
+      }
+      
+      // 如果沒有鼻子，嘗試使用肩膀中心作為上身參考點
+      if (!nosePoint && landmarks[1] && landmarks[2]) {
+        nosePoint = {
+          x: (landmarks[1].x + landmarks[2].x) / 2,
+          y: (landmarks[1].y + landmarks[2].y) / 2,
+          z: ((landmarks[1].z || 0) + (landmarks[2].z || 0)) / 2,
+          visibility: Math.min(landmarks[1].visibility, landmarks[2].visibility)
+        };
+      }
+      
+      if (nosePoint && hipsPoint) {
+        // 🔧 使用與 MotionViewer.jsx 相同的計算方式
+        // 計算從髖部到鼻子/頸部的向量（3D）
+        const axisDir = {
+          x: nosePoint.x - hipsPoint.x,
+          y: nosePoint.y - hipsPoint.y,
+          z: (nosePoint.z || 0) - (hipsPoint.z || 0)
+        };
         
-        if (leftShoulder && rightShoulder && 
-            leftShoulder.visibility > 0.5 && rightShoulder.visibility > 0.5) {
-          const angle = Math.atan2(
-            rightShoulder.y - leftShoulder.y,
-            rightShoulder.x - leftShoulder.x
-          ) * (180 / Math.PI);
+        // 正規化向量
+        const length = Math.sqrt(
+          axisDir.x * axisDir.x + 
+          axisDir.y * axisDir.y + 
+          axisDir.z * axisDir.z
+        );
+        
+        if (length > 0) {
+          const normalizedAxisDir = {
+            x: axisDir.x / length,
+            y: axisDir.y / length,
+            z: axisDir.z / length
+          };
           
-          inclinations.push(Math.abs(angle));
+          // Y 軸向量 (0, 1, 0) - 垂直向上
+          const yAxis = { x: 0, y: 1, z: 0 };
+          
+          // 計算點積
+          const dotProduct = 
+            normalizedAxisDir.x * yAxis.x + 
+            normalizedAxisDir.y * yAxis.y + 
+            normalizedAxisDir.z * yAxis.z;
+          
+          // 計算夾角（弧度轉角度）
+          const clampedDotProduct = Math.max(-1, Math.min(1, dotProduct));
+          const angleRad = Math.acos(clampedDotProduct);
+          const angleDeg = angleRad * (180 / Math.PI);
+          
+          inclinations.push(Math.abs(180 - angleDeg));
         }
       }
     });
     
-    if (inclinations.length === 0) return null;
+    if (inclinations.length === 0) {
+      console.log('⚠️ 無法計算傾斜角：沒有有效的關鍵點數據');
+      return null;
+    }
     
+    // 計算平均值
     const avg = inclinations.reduce((sum, val) => sum + val, 0) / inclinations.length;
+    
+    console.log('📊 傾斜角統計 (修正版):', {
+      有效幀數: inclinations.length,
+      總幀數: frameData.length,
+      平均傾斜角: avg.toFixed(2) + '°',
+      最小值: Math.min(...inclinations).toFixed(2) + '°',
+      最大值: Math.max(...inclinations).toFixed(2) + '°',
+      角度範圍: `${Math.min(...inclinations).toFixed(1)}° - ${Math.max(...inclinations).toFixed(1)}°`,
+      樣本: inclinations.slice(0, 5).map(a => a.toFixed(1) + '°').join(', ')
+    });
     
     return {
       avg: Number(avg.toFixed(1))
     };
   } catch (error) {
-    console.error('計算傾斜角統計失敗:', error);
+    console.error('❌ 計算傾斜角統計失敗:', error);
     return null;
   }
 }

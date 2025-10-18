@@ -9,7 +9,7 @@ router.get('/stats', auth, async (req, res) => {
   try {
     const userId = req.user._id;
     const { period = '7d' } = req.query; // 支援時間範圍查詢
-
+    
     // 計算時間範圍
     const now = new Date();
     let startDate = new Date();
@@ -24,16 +24,12 @@ router.get('/stats', auth, async (req, res) => {
       case '90d':
         startDate.setDate(now.getDate() - 90);
         break;
+      case '120d':
+        startDate.setDate(now.getDate() - 120);
+        break;
       default:
         startDate.setDate(now.getDate() - 7);
     }
-
-    console.log('📊 Dashboard 統計查詢:', {
-      userId: userId.toString(),
-      period,
-      startDate,
-      endDate: now
-    });
 
     // 並行查詢所有統計數據
     const [
@@ -66,12 +62,11 @@ router.get('/stats', auth, async (req, res) => {
       Motions.find({ userId })
         .sort({ createdAt: -1 })
         .limit(5)
-        .select('sessionId title createdAt videoUrl videoDuration metadata analysis status'),
+        .select('sessionId title createdAt videoUrl videoDuration metadata frameData analysis status'),
       
       // 趨勢數據
       getDetailedTrendsData(userId, startDate, now)
     ]);
-
     // 計算統計指標
     const stats = await calculateAdvancedStats(userId, startDate, now);
     res.json({
@@ -98,7 +93,7 @@ router.get('/stats', auth, async (req, res) => {
           centerMoveAvg: calculateCenterMoveStats(motion.frameData)?.avg || 0,
           centerMoveMax: calculateCenterMoveStats(motion.frameData)?.max || 0,
           inclinationAvg: calculateInclinationStats(motion.frameData)?.avg || 0,
-          stabilityScore: motion.analysis?.qualityScore || 0,
+          stabilityScore: motion.analysis?.qualityScore.toFixed(2) || 0,
           jointDeviation: calculateJointDeviation(motion.frameData) || 0,
           annotations: 0 // 需要另外查詢
         })),
@@ -132,6 +127,8 @@ router.get('/stats', auth, async (req, res) => {
 });
 
 // 計算進階統計數據
+// 在 calculateAdvancedStats 中添加更詳細的統計
+// 在 calculateAdvancedStats 中添加更詳細的調試
 async function calculateAdvancedStats(userId, startDate, endDate) {
   try {
     const motions = await Motions.find({
@@ -144,64 +141,93 @@ async function calculateAdvancedStats(userId, startDate, endDate) {
       return {
         avgCenterMove: 0,
         maxCenterMove: 0,
+        minCenterMove: 0,
         avgInclination: 0,
         avgStability: 0,
         avgJointDeviation: 0,
-        centerMoveVariance: 0
+        centerMoveVariance: 0,
+        totalFrames: 0,
+        validMovements: 0
       };
     }
 
     let totalCenterMove = 0;
     let maxCenterMoveGlobal = 0;
+    let minCenterMoveGlobal = Infinity;
     let totalInclination = 0;
     let totalStability = 0;
     let totalJointDeviation = 0;
     let centerMoveValues = [];
+    let totalFrames = 0;
+    let totalValidMovements = 0;
 
-    motions.forEach(motion => {
+    motions.forEach((motion, index) => {
+      console.log(`🔄 處理動作 ${index + 1}/${motions.length}: ${motion.title}`);
+      
       const centerMoveStats = calculateCenterMoveStats(motion.frameData);
       const inclinationStats = calculateInclinationStats(motion.frameData);
       const jointDeviation = calculateJointDeviation(motion.frameData);
+      // 統計幀數
+      totalFrames += motion.frameData?.length || 0;
       
       if (centerMoveStats) {
         totalCenterMove += centerMoveStats.avg;
         maxCenterMoveGlobal = Math.max(maxCenterMoveGlobal, centerMoveStats.max);
+        minCenterMoveGlobal = Math.min(minCenterMoveGlobal, centerMoveStats.min);
         centerMoveValues.push(centerMoveStats.avg);
+        totalValidMovements += centerMoveStats.count;
+      } else {
+        console.log(`⚠️ 動作 "${motion.title}" 無法計算重心移動`);
       }
       
       if (inclinationStats) {
         totalInclination += inclinationStats.avg;
       }
-      
+
       totalStability += motion.analysis?.qualityScore || 0;
       totalJointDeviation += jointDeviation || 0;
     });
 
     const count = motions.length;
-    const avgCenterMove = totalCenterMove / count;
-    
+    const avgCenterMove = count > 0 ? totalCenterMove / count : 0;
     // 計算變異數
     const centerMoveVariance = centerMoveValues.length > 1 
       ? centerMoveValues.reduce((sum, val) => sum + Math.pow(val - avgCenterMove, 2), 0) / centerMoveValues.length
       : 0;
 
+    // console.log('📊 最終統計結果 (修正版):', {
+    //   總動作數: count,
+    //   總幀數: totalFrames,
+    //   有效移動數: totalValidMovements,
+    //   平均重心移動: avgCenterMove.toFixed(2),
+    //   最大重心移動: maxCenterMoveGlobal.toFixed(2),
+    //   最小重心移動: (minCenterMoveGlobal === Infinity ? 0 : minCenterMoveGlobal).toFixed(2),
+    //   平均傾斜角: (totalInclination / count).toFixed(1) + '°'
+    // });
+
     return {
       avgCenterMove: Number(avgCenterMove.toFixed(2)),
       maxCenterMove: Number(maxCenterMoveGlobal.toFixed(2)),
+      minCenterMove: Number((minCenterMoveGlobal === Infinity ? 0 : minCenterMoveGlobal).toFixed(2)),
       avgInclination: Number((totalInclination / count).toFixed(1)),
       avgStability: Math.round(totalStability / count),
       avgJointDeviation: Number((totalJointDeviation / count).toFixed(1)),
-      centerMoveVariance: Number(centerMoveVariance.toFixed(2))
+      centerMoveVariance: Number(centerMoveVariance.toFixed(2)),
+      totalFrames,
+      validMovements: totalValidMovements
     };
   } catch (error) {
-    console.error('計算進階統計失敗:', error);
+    console.error('❌ 計算進階統計失敗:', error);
     return {
       avgCenterMove: 0,
       maxCenterMove: 0,
+      minCenterMove: 0,
       avgInclination: 0,
       avgStability: 0,
       avgJointDeviation: 0,
-      centerMoveVariance: 0
+      centerMoveVariance: 0,
+      totalFrames: 0,
+      validMovements: 0
     };
   }
 }
@@ -223,7 +249,7 @@ async function getDetailedTrendsData(userId, startDate, endDate) {
       centerMoveAvg: calculateCenterMoveStats(motion.frameData)?.avg || 0,
       centerMoveMax: calculateCenterMoveStats(motion.frameData)?.max || 0,
       inclinationAvg: calculateInclinationStats(motion.frameData)?.avg || 0,
-      stabilityScore: motion.analysis?.qualityScore || Math.floor(Math.random() * 30) + 70,
+      stabilityScore: motion.analysis?.qualityScore.toFixed(2) || Math.floor(Math.random() * 30) + 70,
       jointDeviation: calculateJointDeviation(motion.frameData) || 0,
       videoUrl: motion.videoUrl,
       annotations: 0 // 可以另外查詢
@@ -235,42 +261,115 @@ async function getDetailedTrendsData(userId, startDate, endDate) {
 }
 
 // 計算重心移動統計
+// 修正的 calculateCenterMoveStats 函數
 function calculateCenterMoveStats(frameData) {
   if (!frameData || frameData.length === 0) return null;
   
   try {
     const centerMoves = [];
+    let previousHipsPos = null;
     
-    for (let i = 1; i < frameData.length; i++) {
-      const prev = frameData[i - 1];
-      const curr = frameData[i];
-      
-      if (prev.pose && curr.pose && prev.pose.length > 0 && curr.pose.length > 0) {
-        // 計算重心點 (使用髖部關鍵點)
-        const prevCenter = calculateCenterPoint(prev.pose);
-        const currCenter = calculateCenterPoint(curr.pose);
-        
-        if (prevCenter && currCenter) {
-          const distance = Math.sqrt(
-            Math.pow(currCenter.x - prevCenter.x, 2) + 
-            Math.pow(currCenter.y - prevCenter.y, 2)
+    for (let i = 0; i < frameData.length; i++) {
+      const frame = frameData[i];
+      // 🔧 統一數據結構檢查
+      let landmarks = null;
+      if (frame.landmarks3D && frame.landmarks3D.length > 8) {
+        landmarks = frame.landmarks3D;
+      } else if (frame.pose && frame.pose.length > 8) {
+        landmarks = frame.pose;
+      } else {
+        continue; // 跳過這一幀
+      }
+      // 🔧 使用與 loadData.js 相同的髖部計算方式
+      const currentHipsPos = calculateCenterPoint3DWithTransform(landmarks, frameData, i);
+      if (currentHipsPos) {
+        if (previousHipsPos) {
+          // 🔧 使用與 MotionViewer 相同的 3D 距離計算
+          const moveLength = Math.sqrt(
+            Math.pow(currentHipsPos.x - previousHipsPos.x, 2) + 
+            Math.pow(currentHipsPos.y - previousHipsPos.y, 2) + 
+            Math.pow(currentHipsPos.z - previousHipsPos.z, 2)
           );
-          centerMoves.push(distance);
+          centerMoves.push(moveLength);
         }
+        // 更新前一幀位置
+        previousHipsPos = { ...currentHipsPos };
       }
     }
-    
-    if (centerMoves.length === 0) return null;
+
+    if (centerMoves.length === 0) {
+      console.log('⚠️ 無法計算重心移動：沒有有效的髖部位置數據');
+      return null;
+    }
     
     const avg = centerMoves.reduce((sum, val) => sum + val, 0) / centerMoves.length;
     const max = Math.max(...centerMoves);
-    
+    const min = Math.min(...centerMoves);
     return {
-      avg: Number((avg * 100).toFixed(2)), // 轉換為公分並保留兩位小數
-      max: Number((max * 100).toFixed(2))
+      avg: Number((avg).toFixed(2)),
+      max: Number((max).toFixed(2)),
+      min: Number((min).toFixed(2)),
+      count: centerMoves.length
     };
   } catch (error) {
-    console.error('計算重心移動統計失敗:', error);
+    console.error('❌ 計算重心移動統計失敗:', error);
+    return null;
+  }
+}
+
+// 🔧 新增：使用與 loadData.js 相同的座標變換計算
+function calculateCenterPoint3DWithTransform(landmarks, frameData, frameIndex) {
+  try {
+    const leftHip = landmarks[7];   // left_hip (index 7)
+    const rightHip = landmarks[8];  // right_hip (index 8)
+
+    if (leftHip && rightHip) {
+      
+      // 🔧 計算 Y 軸偏移量（與 loadData.js 一致）
+      // 找出腳跟的最低 Y 點作為地面參考
+      let yOffset = 0;
+      if (landmarks[15] && landmarks[16]) { // left_foot_index, right_foot_index
+        const minHeelY = Math.max(landmarks[15].y, landmarks[16].y);
+        yOffset = minHeelY * 100;
+      }
+      
+      // 🔧 使用與 loadData.js 完全相同的計算方式
+      const centerHip = {
+        x: (leftHip.x + rightHip.x) / 2 * 100,                    // 放大 100 倍
+        y: (-(leftHip.y + rightHip.y) / 2 * 100) + yOffset,       // Y軸翻轉 + 放大 + 偏移
+        z: ((leftHip.z || 0) + (rightHip.z || 0)) / 2 * 100       // 放大 100 倍
+      };
+      
+      
+      return centerHip;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ 計算變換後重心點失敗:', error);
+    return null;
+  }
+}
+
+// 🔧 同時更新原有的 calculateCenterPoint 函數以保持一致
+function calculateCenterPoint(landmarks) {
+  try {
+    const leftHip = landmarks[7];
+    const rightHip = landmarks[8];
+
+    if (leftHip && rightHip && 
+        leftHip.visibility > 0.5 && rightHip.visibility > 0.5) {
+      
+      // 🔧 這個函數用於 2D 計算，不需要座標變換
+      return {
+        x: (leftHip.x + rightHip.x) / 2,
+        y: (leftHip.y + rightHip.y) / 2
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ 計算重心點失敗:', error);
     return null;
   }
 }
@@ -372,16 +471,6 @@ function calculateInclinationStats(frameData) {
     // 計算平均值
     const avg = inclinations.reduce((sum, val) => sum + val, 0) / inclinations.length;
     
-    console.log('📊 傾斜角統計 (修正版):', {
-      有效幀數: inclinations.length,
-      總幀數: frameData.length,
-      平均傾斜角: avg.toFixed(2) + '°',
-      最小值: Math.min(...inclinations).toFixed(2) + '°',
-      最大值: Math.max(...inclinations).toFixed(2) + '°',
-      角度範圍: `${Math.min(...inclinations).toFixed(1)}° - ${Math.max(...inclinations).toFixed(1)}°`,
-      樣本: inclinations.slice(0, 5).map(a => a.toFixed(1) + '°').join(', ')
-    });
-    
     return {
       avg: Number(avg.toFixed(1))
     };
@@ -397,16 +486,16 @@ function calculateJointDeviation(frameData) {
   
   try {
     // 簡化版本：計算關鍵關節點的標準差
-    const keyJoints = [11, 12, 13, 14, 15, 16]; // 肩膀、手肘、手腕
+    const keyJoints = [1, 2, 3, 4, 5, 6]; // 肩膀、手肘、手腕
     let totalDeviation = 0;
     let count = 0;
     
     keyJoints.forEach(jointIndex => {
       const positions = frameData
-        .filter(frame => frame.pose && frame.pose[jointIndex] && frame.pose[jointIndex].visibility > 0.5)
+        .filter(frame => frame.landmarks3D && frame.landmarks3D[jointIndex] && frame.landmarks3D[jointIndex].visibility > 0.5)
         .map(frame => ({
-          x: frame.pose[jointIndex].x,
-          y: frame.pose[jointIndex].y
+          x: frame.landmarks3D[jointIndex].x,
+          y: frame.landmarks3D[jointIndex].y
         }));
       
       if (positions.length > 1) {
@@ -426,28 +515,6 @@ function calculateJointDeviation(frameData) {
   } catch (error) {
     console.error('計算關節偏差失敗:', error);
     return 0;
-  }
-}
-
-// 計算重心點
-function calculateCenterPoint(pose) {
-  try {
-    // 使用髖部關鍵點 (關鍵點 23, 24)
-    const leftHip = pose[23];
-    const rightHip = pose[24];
-    
-    if (leftHip && rightHip && 
-        leftHip.visibility > 0.5 && rightHip.visibility > 0.5) {
-      return {
-        x: (leftHip.x + rightHip.x) / 2,
-        y: (leftHip.y + rightHip.y) / 2
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('計算重心點失敗:', error);
-    return null;
   }
 }
 

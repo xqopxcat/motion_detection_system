@@ -4,10 +4,8 @@ const router = express.Router();
 // API 路由
 router.use('/motions', require('./motions'));
 router.use('/annotations', require('./annotations'));
-// router.use('/auth', require('./auth'));
-// router.use('/sessions', require('./sessions'));
-// router.use('/files', require('./files'));
-// router.use('/analytics', require('./analytics'));
+router.use('/dashboard', require('./dashboard'));
+router.use('/auth', require('./auth'));
 
 
 // API 狀態檢查

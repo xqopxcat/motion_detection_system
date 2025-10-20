@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const router = express.Router();
+const { auth } = require('../middleware/auth');
 const { Motions } = require('../mongodb/models');
 const cloudinary = require('../config/cloudinary');
 const { uploadMotionFiles } = require('../middleware/upload');
@@ -66,9 +67,11 @@ router.get('/health/check', async (req, res) => {
 // });
 
 // GET /api/motions - 獲取動作列表
-router.get('/', async (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
-        const motions = await Motions.find({});
+        const motions = await Motions.find({ 
+            userId: req.user?._id
+        });
         console.log('Motions fetched:', motions.length);
         res.status(200).json({
             success: true,
@@ -84,7 +87,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth, async (req, res) => {
   try {
     const details = await Motions.findOne({
       sessionId: req.params.id
@@ -111,7 +114,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', uploadMotionFiles, async (req, res) => {
+router.post('/', auth, uploadMotionFiles, async (req, res) => {
   try {
     const { title, description, tags, isPublic } = req.body;
     if (!req.files?.video || !req.files?.landmarks) {
@@ -138,7 +141,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
     const sessionId = uuidv4();
     const motions = new Motions({
       sessionId,
-      userId: req.user?.id || null,
+      userId: req.user?._id,
       title: title || `動作記錄 ${new Date().toLocaleDateString()}`,
       description: description || '',
       videoFileName: videoFile.originalname,
@@ -257,7 +260,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const motion = await Motions.findOneAndDelete({ sessionId: req.params.id });
 
@@ -287,5 +290,5 @@ router.delete('/:id', async (req, res) => {
     });
   }
 });
-// 其他路由和中間件可以在這裡添加
+
 module.exports = router;

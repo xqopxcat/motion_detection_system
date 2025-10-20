@@ -31,7 +31,8 @@ const annotationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: false // 允許匿名標注
+    required: true,
+    index: true
   },
   isVisible: {
     type: Boolean,

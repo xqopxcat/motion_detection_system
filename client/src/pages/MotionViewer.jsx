@@ -1,17 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
 import * as THREE from 'three';
 import { useParams } from 'react-router-dom';
-import { initScene } from '../scenes/init'; // 假設有一個 initScene 函數來初始化場景
-import { addLights, addFloor } from '../scenes/lightsAndFloor'; // 假設有一個模組來添加光源和地板
-import { makeTextSprite } from "../scenes/modules";
+import { initScene } from '../scenes/init';
+import { addLights, addFloor } from '../scenes/lightsAndFloor';
 import ControlPanel from "../components/Viewer/ControlPanel";
 import ActionDataPanel from "../components/Viewer/ActionDataPanel";
 import VideoPanel from "../components/Viewer/VideoPanel";
 import PanelLayout from "../components/Viewer/PanelLayout";
-// import { loadBVHAndInitSkeleton, loadFBXAndInitSkeleton, loadLandmarkAndInitSkeleton } from "../scenes/loadFile";
 import { fetchAnnotationMark, fetchLandmark } from "../scenes/loadData";
 import { useGetMotionDetailsQuery } from "../redux/services/motionCoreAPI";
 import { useGetAnnotationsQuery, useUpdateAnnotationMutation, useDeleteAnnotationMutation } from "../redux/services/annotationCoreAPI";
+import { useDeviceDetection } from "../hooks/useDeviceDetection";
+import './MotionViewer.scss';
 
 const boneMeshes = [];
 const jointSpheres = [];
@@ -19,36 +19,35 @@ const jointSpheres = [];
 export function highlightSelectedJoint(jointSpheres, selectedJointName, comparedJointName) {
     jointSpheres.forEach(({ bone, sphere }) => {
         if (bone.name === selectedJointName) {
-            sphere.material.color.set(0x00ffff); // 主選擇關節：青色
+            sphere.material.color.set(0x00ffff);
         } else if (bone.name === comparedJointName) {
-            sphere.material.color.set(0xffff00); // 比較關節：黃色
+            sphere.material.color.set(0xffff00);
         } else {
-            sphere.material.color.set(0xff0000); // 其他：紅色
+            sphere.material.color.set(0xff0000);
         }
     });
 }
 
 const MotionViewer = () => {
     const mountRef = useRef(null);
-    const [showControlPanel, setShowControlPanel] = useState(false); // 預設收合狀態
+    const [showControlPanel, setShowControlPanel] = useState(false);
     const [showActionPanel, setShowActionPanel] = useState(false);
-    const [annotations, setAnnotations] = useState([]);
-    const [speed, setSpeed] = useState(0.5);      // 控制播放速率
-    const [progress, setProgress] = useState(0);  // 控制播放進度條
+    const [showVideoPanel, setShowVideoPanel] = useState(false);
+    const { isMobile } = useDeviceDetection();
+    
+    // ...existing state...
+    const [speed, setSpeed] = useState(0.5);
+    const [progress, setProgress] = useState(0);
     const [frameNumber, setFrameNumber] = useState(0);
     const [isPaused, setIsPaused] = useState(true);
     const [frameStep, setFrameStep] = useState(false);
     const [isBVHLoaded, setIsBVHLoaded] = useState(true)
     const [isFBXLoaded, setIsFBXLoaded] = useState(false)
     const [isLandmarkLoaded, setIsLandmarkLoaded] = useState(false)
-    const [joints, setJoints] = useState([]); // 用於存儲骨架關節
+    const [joints, setJoints] = useState([]);
     const [selectedJoint, setSelectedJoint] = useState('');
     const [comparedJoint, setComparedJoint] = useState('');
-     
-    // 新增影片相關狀態
     const [videoSrc, setVideoSrc] = useState(null);
-    const [showVideoPanel, setShowVideoPanel] = useState(false);
-
     const [currentFrameData, setCurrentFrameData] = useState({
         angle: 0,
         angleX: 0,
@@ -58,7 +57,7 @@ const MotionViewer = () => {
         centerY: 0,
         centerZ: 0,
         centerMove: 0,
-        centerDirection: new THREE.Vector3(1, 0, 0), // 重心移動方向
+        centerDirection: new THREE.Vector3(1, 0, 0),
         inclination: 0,
         jointDistance: 0,
     });
@@ -74,11 +73,50 @@ const MotionViewer = () => {
     const { id: sessionId } = useParams();
     const { data: motionData, isLoading: isMotionsLoading } = useGetMotionDetailsQuery(sessionId);
     const { data: annotationsData, isLoading: isAnnotationsLoading } = useGetAnnotationsQuery(sessionId);
-
     const [updateAnnotation] = useUpdateAnnotationMutation();
     const [deleteAnnotation] = useDeleteAnnotationMutation();
+
+    // 處理響應式設計
     useEffect(() => {
-      isPausedRef.current = isPaused;
+        const handleResize = () => {
+            const width = window.innerWidth;
+            
+            // 在手機上自動關閉側邊面板以節省空間
+            if (width <= 768) {
+                setShowActionPanel(false);
+                setShowVideoPanel(false);
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // 監聽面板狀態變化，重新調整渲染器尺寸
+    useEffect(() => {
+        if (cameraRef.current && mountRef.current) {
+            const mount = mountRef.current;
+            const renderer = mount.querySelector('canvas')?.getContext('webgl')?.canvas?.renderer;
+            
+            if (renderer) {
+                const handleResize = () => {
+                    const width = mount.clientWidth;
+                    const height = mount.clientHeight;
+                    cameraRef.current.aspect = width / height;
+                    cameraRef.current.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                };
+                
+                // 延遲執行以確保 CSS 動畫完成
+                const timer = setTimeout(handleResize, 300);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [showControlPanel, showActionPanel, showVideoPanel, isMobile]);
+
+    // ...existing useEffect hooks...
+    useEffect(() => {
+        isPausedRef.current = isPaused;
     }, [isPaused]);
 
     useEffect(() => {
@@ -117,7 +155,6 @@ const MotionViewer = () => {
             boneMeshes,
             jointSpheres,
             jointMapRef,
-            setAnnotations,
             setIsLandmarkLoaded,
             setProgress,
             setFrameNumber,
@@ -138,64 +175,29 @@ const MotionViewer = () => {
           fetchAnnotationMark(scene, annotationsData?.data);
         }
 
-        // Landmark 加載
-        // loadLandmarkAndInitSkeleton({
-        //     landmarkUrl: '/pose_landmarks_2025-07-09T12-54-47.json',
-        //     scene,
-        //     camera,
-        //     renderer,
-        //     setJoints,
-        //     setSelectedJoint,
-        //     setComparedJoint,
-        //     boneMeshes,
-        //     jointSpheres,
-        //     jointMapRef,
-        //     setAnnotations,
-        //     setIsLandmarkLoaded,
-        //     setProgress,
-        //     setFrameNumber,
-        //     setCurrentFrameData,
-        //     mixerRef,
-        //     frameRef,
-        //     isPausedRef,
-        //     speedRef,
-        //     selectedJointRef,
-        //     comparedJointRef,
-        //     hipsPositionsRef,
-        //     animate,
-        // });
-        
-        //     fbxUrl: '/Freehang_Climb.fbx',
-        //     scene,
-        //     camera,
-        //     renderer,
-        //     setJoints,
-        //     setSelectedJoint,
-        //     setComparedJoint,
-        //     boneMeshes,
-        //     jointSpheres,
-        //     jointMapRef,
-        //     setAnnotations,
-        //     setIsFBXLoaded,
-        //     setProgress,
-        //     setFrameNumber,
-        //     setCurrentFrameData,
-        //     mixerRef,
-        //     frameRef,
-        //     isPausedRef,
-        //     speedRef,
-        //     selectedJointRef,
-        //     comparedJointRef,
-        //     hipsPositionsRef,
-        //     animate,
-        // });
-
-        // 處理視窗大小調整
+        // 改進的尺寸調整處理
         const handleResize = () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (camera && renderer && mount) {
+                const width = mount.clientWidth;
+                const height = mount.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
         };
+
+        // 初始化時調整尺寸
+        setTimeout(handleResize, 100);
+        
+        // 添加 ResizeObserver 以監聽容器尺寸變化
+        let resizeObserver;
+        if (mount && window.ResizeObserver) {
+            resizeObserver = new ResizeObserver(() => {
+                handleResize();
+            });
+            resizeObserver.observe(mount);
+        }
+
         window.addEventListener('resize', handleResize);
 
         return () => {
@@ -213,7 +215,7 @@ const MotionViewer = () => {
             const action = mixerRef.current._actions[0];
             const clip = action._clip;
             const fps = 1 / clip.tracks[0].times[1] - clip.tracks[0].times[0] || 30;
-            mixerRef.current.update(1 / Math.floor(fps)); // 假設 30fps
+            mixerRef.current.update(1 / Math.floor(fps));
             setFrameStep(false);
         }
     }, [frameStep, frameNumber]);
@@ -221,21 +223,192 @@ const MotionViewer = () => {
     const handleRemoveVideo = () => {
         setVideoSrc(null);
     };
+
+    // 行動裝置專用的面板切換邏輯
+    const handleMobilePanelToggle = (panelType) => {
+        if (isMobile) {
+            // 在手機上，一次只能開啟一個面板
+            switch (panelType) {
+                case 'control':
+                    setShowControlPanel(!showControlPanel);
+                    setShowActionPanel(false);
+                    setShowVideoPanel(false);
+                    break;
+                case 'action':
+                    setShowActionPanel(!showActionPanel);
+                    setShowControlPanel(false);
+                    setShowVideoPanel(false);
+                    break;
+                case 'video':
+                    setShowVideoPanel(!showVideoPanel);
+                    setShowControlPanel(false);
+                    setShowActionPanel(false);
+                    break;
+            }
+        } else {
+            // 桌面版維持原有邏輯
+            switch (panelType) {
+                case 'control':
+                    setShowControlPanel(!showControlPanel);
+                    break;
+                case 'action':
+                    setShowActionPanel(!showActionPanel);
+                    break;
+                case 'video':
+                    setShowVideoPanel(!showVideoPanel);
+                    break;
+            }
+        }
+    };
     
     return (
-        <>
-            <PanelLayout
-                leftPanel={<div ref={mountRef} style={{ width: '100%', height: '100%' }} />}
-                rightPanel={showVideoPanel ? (
-                    <VideoPanel
-                        videoSrc={videoSrc}
-                        onClose={() => setShowVideoPanel(false)}
-                    />
-                ) : null}
-            />
-            {(isBVHLoaded || isFBXLoaded || isLandmarkLoaded) && (
+        <div className={`motion-viewer ${isMobile && 'mobile'}`}>
+            <div className={`viewer-content ${showControlPanel || showActionPanel || showVideoPanel ? 'active' : ''}`}>
+                <PanelLayout
+                    leftPanel={
+                        <div 
+                            ref={mountRef} 
+                            style={{ 
+                                width: '100%', 
+                                height: isMobile && (showControlPanel || showActionPanel || showVideoPanel) ? '60vh' : '100%',
+                                transition: 'height 0.3s ease'
+                            }} 
+                        />
+                    }
+                    rightPanel={!isMobile && showVideoPanel ? (
+                        <VideoPanel
+                            videoSrc={videoSrc}
+                            onClose={() => setShowVideoPanel(false)}
+                        />
+                    ) : null}
+                />
+            </div>
+
+            {/* 浮動控制按鈕 */}
+            {isMobile && (
+              <div className="floating-controls">
+                <button
+                    className={`floating-btn ${showControlPanel ? 'active' : ''}`}
+                    onClick={() => handleMobilePanelToggle('control')}
+                    title="控制面板"
+                >
+                    ⚙️
+                </button>
+                <button
+                    className={`floating-btn ${showActionPanel ? 'active' : ''}`}
+                    onClick={() => handleMobilePanelToggle('action')}
+                    title="動作數據"
+                >
+                    📊
+                </button>
+                <button
+                    className={`floating-btn ${showVideoPanel ? 'active' : ''}`}
+                    onClick={() => handleMobilePanelToggle('video')}
+                    title="影片"
+                >
+                    🎥
+                </button>
+              </div>
+            )}
+
+            {/* 行動裝置面板 */}
+            {isMobile && (showControlPanel || showActionPanel || showVideoPanel) && (
+                <div className="mobile-panels">
+                    <div className="mobile-panel-tabs">
+                        <button
+                            className={`mobile-tab ${showControlPanel ? 'active' : ''}`}
+                            onClick={() => handleMobilePanelToggle('control')}
+                        >
+                            控制
+                        </button>
+                        <button
+                            className={`mobile-tab ${showActionPanel ? 'active' : ''}`}
+                            onClick={() => handleMobilePanelToggle('action')}
+                        >
+                            數據
+                        </button>
+                        <button
+                            className={`mobile-tab ${showVideoPanel ? 'active' : ''}`}
+                            onClick={() => handleMobilePanelToggle('video')}
+                        >
+                            影片
+                        </button>
+                    </div>
+
+                    {showControlPanel && (isBVHLoaded || isFBXLoaded || isLandmarkLoaded) && (
+                        <ControlPanel
+                            showControlPanel={true}
+                            onToggleControlPanel={() => handleMobilePanelToggle('control')}
+                            showVideoPanel={showVideoPanel}
+                            onToggleVideoPanel={() => handleMobilePanelToggle('video')}
+                            annotations={annotationsData?.data}
+                            onAnnotationFocus={ann => {
+                                if (ann) {
+                                    const pos = new THREE.Vector3(ann.position.x, ann.position.y, ann.position.z);
+                                    cameraRef.current.position.lerp(pos, 0.5);
+                                }
+                            }}
+                            onAnnotationDelete={id => {
+                                deleteAnnotation(id);
+                            }}
+                            onAnnotationEdit={(id, newText) => {
+                                updateAnnotation({
+                                    annotationId: id,
+                                    text: newText
+                                });
+                            }}
+                            frameNumber={frameNumber}
+                            frameRef={frameRef}
+                            mixerRef={mixerRef}
+                            setFrameNumber={setFrameNumber}
+                            isPaused={isPaused}
+                            setIsPaused={setIsPaused}
+                            setFrameStep={setFrameStep}
+                            speed={speed}
+                            setSpeed={setSpeed}
+                            progress={progress}
+                            setProgress={setProgress}
+                            isMobile={isMobile}
+                        />
+                    )}
+
+                    {showActionPanel && (
+                        <ActionDataPanel
+                            showActionPanel={true}
+                            onToggleActionPanel={() => handleMobilePanelToggle('action')}
+                            jointsList={joints}
+                            selectedJoint={selectedJoint}
+                            comparedJoint={comparedJoint}
+                            onJointChange={jointName => {
+                                setSelectedJoint(jointName);
+                                highlightSelectedJoint(jointSpheres, jointName, comparedJoint);
+                            }}
+                            onComparedJointChange={jointName => {
+                                setComparedJoint(jointName);
+                                highlightSelectedJoint(jointSpheres, selectedJoint, jointName);
+                            }}
+                            frameData={currentFrameData}
+                            onFrameDataChange={(data) => {
+                                setCurrentFrameData(data);
+                            }}
+                            isMobile={isMobile}
+                        />
+                    )}
+
+                    {showVideoPanel && (
+                        <VideoPanel
+                            videoSrc={videoSrc}
+                            onClose={() => handleMobilePanelToggle('video')}
+                            isMobile={isMobile}
+                        />
+                    )}
+                </div>
+            )}
+
+            {/* 桌面版面板 */}
+            {!isMobile && (isBVHLoaded || isFBXLoaded || isLandmarkLoaded) && (
                 <ControlPanel
-                    showControlPanel={ showControlPanel }
+                    showControlPanel={showControlPanel}
                     onToggleControlPanel={() => setShowControlPanel(!showControlPanel)}
                     showVideoPanel={showVideoPanel}
                     onToggleVideoPanel={() => setShowVideoPanel(!showVideoPanel)}
@@ -243,17 +416,17 @@ const MotionViewer = () => {
                     onAnnotationFocus={ann => {
                         if (ann) {
                             const pos = new THREE.Vector3(ann.position.x, ann.position.y, ann.position.z);
-                            cameraRef.current.position.lerp(pos, 0.5); // 或自訂聚焦動畫
+                            cameraRef.current.position.lerp(pos, 0.5);
                         }
                     }}
                     onAnnotationDelete={id => {
                         deleteAnnotation(id);
                     }}
                     onAnnotationEdit={(id, newText) => {
-                      updateAnnotation({
-                        annotationId: id,
-                        text: newText
-                      });
+                        updateAnnotation({
+                          annotationId: id,
+                          text: newText
+                        });
                     }}
                     frameNumber={frameNumber}
                     frameRef={frameRef}
@@ -268,32 +441,34 @@ const MotionViewer = () => {
                     setProgress={setProgress}
                 />
             )}
-            <ActionDataPanel
-                showActionPanel={showActionPanel}
-                onToggleActionPanel={() => setShowActionPanel(!showActionPanel)}
-                jointsList={joints}
-                selectedJoint={selectedJoint}
-                comparedJoint={comparedJoint}
-                onJointChange={jointName => {
-                    setSelectedJoint(jointName);
-                    highlightSelectedJoint(jointSpheres, jointName, comparedJoint);
-                }}
-                onComparedJointChange={jointName => {
-                    setComparedJoint(jointName);
-                    highlightSelectedJoint(jointSpheres, selectedJoint, jointName);
-                }}
-                frameData={currentFrameData}
-                onFrameDataChange={(data) => {
-                    setCurrentFrameData(data);
-                }}
-            />
-        </>
+
+            {!isMobile && (
+                <ActionDataPanel
+                    showActionPanel={showActionPanel}
+                    onToggleActionPanel={() => setShowActionPanel(!showActionPanel)}
+                    jointsList={joints}
+                    selectedJoint={selectedJoint}
+                    comparedJoint={comparedJoint}
+                    onJointChange={jointName => {
+                        setSelectedJoint(jointName);
+                        highlightSelectedJoint(jointSpheres, jointName, comparedJoint);
+                    }}
+                    onComparedJointChange={jointName => {
+                        setComparedJoint(jointName);
+                        highlightSelectedJoint(jointSpheres, selectedJoint, jointName);
+                    }}
+                    frameData={currentFrameData}
+                    onFrameDataChange={(data) => {
+                        setCurrentFrameData(data);
+                    }}
+                />
+            )}
+        </div>
     )
 }
 
 export default MotionViewer;
 
-// 動畫循環
 function animate({
     renderer,
     scene,
@@ -322,22 +497,19 @@ function animate({
             mixer.update(delta * speedRef.current);
         };
         
-        // 進度條計算 && 幀數計算
         if (mixer && mixer._actions[0]?._clip) {
             const action = mixer._actions[0];
             const clip = action._clip;
             const time = action.time !== undefined ? action.time : mixer.time;
-            let fps = 30; // 預設 fps
+            let fps = 30;
             
             if (mixer._isLandmarkMixer) {
-                // Landmark mixer 特殊處理
                 fps = 30;
                 const frame = mixer._currentFrame || 0;
                 if (onFrame) onFrame(frame);
                 const progress = Math.min(frame / (mixer._totalFrames - 1), 1);
                 if (onProgerss) onProgerss(progress);
             } else {
-                // 標準 Three.js mixer
                 fps = 1 / clip.tracks[0].times[1] - clip.tracks[0].times[0] || 30;
                 const frame = Math.floor(time * fps);
                 if (onFrame) onFrame(frame);
@@ -346,16 +518,14 @@ function animate({
             }
         }
         
-        // 更新骨架圓柱
         boneMeshes.forEach(({ bone, mesh, endBone }) => {
             if (endBone) {
-                // Landmark 骨架處理（有明確的起始和結束骨骼）
                 const startPosition = bone.getWorldPosition(new THREE.Vector3());
                 const endPosition = endBone.getWorldPosition(new THREE.Vector3());
                 const direction = new THREE.Vector3().subVectors(endPosition, startPosition);
                 const length = direction.length();
                 
-                if (length > 0.1) { // 避免長度太小
+                if (length > 0.1) {
                     mesh.position.copy(startPosition.clone().add(direction.multiplyScalar(0.5)));
                     mesh.quaternion.setFromUnitVectors(
                         new THREE.Vector3(0, 1, 0),
@@ -367,7 +537,6 @@ function animate({
                     mesh.visible = false;
                 }
             } else {
-                // 標準 BVH/FBX 骨架處理
                 const parentPosition = bone.parent.getWorldPosition(new THREE.Vector3());
                 const childPosition = bone.getWorldPosition(new THREE.Vector3());
                 const direction = new THREE.Vector3().subVectors(childPosition, parentPosition);
@@ -386,7 +555,6 @@ function animate({
             sphere.position.copy(pos);
         });
 
-        // 更新 centerHip 球體位置
         if (centerHipSphere && hipsPositionsRef.current && frameRef.current !== undefined) {
             const currentFrame = frameRef.current;
             const centerHipPos = hipsPositionsRef.current[currentFrame];
@@ -398,7 +566,6 @@ function animate({
             }
         }
 
-        // 更新 chest 球體位置
         if (chestSphere && jointMapRef.current['chest']) {
             const chestBone = jointMapRef.current['chest'];
             const chestPos = chestBone.getWorldPosition(new THREE.Vector3());
@@ -406,21 +573,20 @@ function animate({
             chestSphere.visible = true;
         }
         
-        // 重心座標（支援不同格式）
         const hips = jointMapRef.current["hip"] || jointMapRef.current["Hips"] || 
                     jointMapRef.current["mixamorigHips"] || jointMapRef.current["mixamorig:Hips"] ||
-                    jointMapRef.current["center_hip"]; // landmark centerHip
+                    jointMapRef.current["center_hip"];
         const neck = jointMapRef.current["neck"] || jointMapRef.current["Neck"] || 
                     jointMapRef.current["mixamorigNeck"] || jointMapRef.current["mixamorig:Neck"] ||
-                    jointMapRef.current["nose"]; // landmark 格式（用 nose 代替 neck）
+                    jointMapRef.current["nose"];
         if (hips) {
             const hipsPos = hips.getWorldPosition(new THREE.Vector3());
             const neckPos = neck.getWorldPosition(new THREE.Vector3());
             const axisDir = new THREE.Vector3().subVectors(neckPos, hipsPos).normalize();
             const axisLength = hipsPos.distanceTo(neckPos);
-            const xAxis = new THREE.Vector3(1, 0, 0);
-            const inclination = axisDir.angleTo(xAxis) * 180 / Math.PI;
-            const nowFrame = Math.max(0, frameRef.current); // 當前幀
+            const yAxis = new THREE.Vector3(0, 1, 0);
+            const inclination = axisDir.angleTo(yAxis) * 180 / Math.PI;
+            const nowFrame = Math.max(0, frameRef.current);
             const prevFrame = Math.max(0, nowFrame - 1);
 
             const nowHips = hipsPositionsRef.current[nowFrame];
@@ -432,14 +598,14 @@ function animate({
                 moveDir = nowHips.clone().sub(prevHips);
                 moveLength = moveDir.length();
             }
-            const dir = moveDir.length() > 0.001 ? moveDir.clone().normalize() : new THREE.Vector3(1, 0, 0); // 單位向量
-            const actualDir = dir.clone().multiplyScalar(moveLength); // 移動向量
-            // 用 ArrowHelper 標示重心運動軸心
+            const dir = moveDir.length() > 0.001 ? moveDir.clone().normalize() : new THREE.Vector3(1, 0, 0);
+            const actualDir = dir.clone().multiplyScalar(moveLength);
+            
             if (!scene.userData.centerMoveArrow) {
                 scene.userData.centerMoveArrow = new THREE.ArrowHelper(
                     dir,
                     hipsPos,
-                    Math.max(moveLength * 10, 10), // 放大顯示
+                    Math.max(moveLength * 10, 10),
                     0x00ff00,
                     20,
                     10
@@ -475,81 +641,36 @@ function animate({
                 centerX: hipsPos.x.toFixed(2),
                 centerY: hipsPos.y.toFixed(2),
                 centerZ: hipsPos.z.toFixed(2),
-                centerMove: moveLength.toFixed(2), // 重心移動距離
-                centerDirection: actualDir, // 重心移動方向
-                inclination: inclination.toFixed(2), // 重心對X軸的傾斜角度
+                centerMove: moveLength.toFixed(2),
+                centerDirection: actualDir,
+                inclination: inclination.toFixed(2),
             }));
         }
         
-
-        // 指定關節的姿態差異角度
         const sel = jointMapRef.current[selectedJointRef.current];
         const parent = sel?.parent;
         const compared = jointMapRef.current[comparedJointRef.current];
         let angleDeg = 0;
         let jointDistance = 0;
         if (sel && parent) {
-            // 取得兩個骨頭的世界旋轉
             const selQuat = sel.getWorldQuaternion(new THREE.Quaternion());
             const parentQuat = parent.getWorldQuaternion(new THREE.Quaternion());
-            // 相對旋轉
             const relativeQuat = selQuat.clone().invert().multiply(parentQuat);
-            // 轉成歐拉角（XYZ順序）
             const relativeEuler = new THREE.Euler().setFromQuaternion(relativeQuat, 'XYZ');
-            // 取得每個軸向的角度（單位：度）
-            const angleX = THREE.MathUtils.radToDeg(relativeEuler.x); // X軸（左右，Pitch）
-            const angleY = THREE.MathUtils.radToDeg(relativeEuler.y); // Y軸（上下，Yaw）
-            const angleZ = THREE.MathUtils.radToDeg(relativeEuler.z); // Z軸（扭轉，Roll）
+            const angleX = THREE.MathUtils.radToDeg(relativeEuler.x);
+            const angleY = THREE.MathUtils.radToDeg(relativeEuler.y);
+            const angleZ = THREE.MathUtils.radToDeg(relativeEuler.z);
             const angleRad = 2 * Math.acos(Math.min(Math.max(relativeQuat.w, -1), 1));
             angleDeg = angleRad * (180 / Math.PI);
-            // angleDeg = Math.acos(
-            //     2 * Math.pow(selQuat.dot(comparedQuat), 2) - 1
-            // ) * (180 / Math.PI);
             onSetCurrentFrameData(prev => ({
                 ...prev,
-                angle: angleDeg.toFixed(2),   // 總體旋轉角度
-                angleX: angleX.toFixed(2),    // X軸（左右，Pitch）
-                angleY: angleY.toFixed(2),    // Y軸（上下，Yaw）
-                angleZ: angleZ.toFixed(2),    // Z軸（扭轉，Roll）
+                angle: angleDeg.toFixed(2),
+                angleX: angleX.toFixed(2),
+                angleY: angleY.toFixed(2),
+                angleZ: angleZ.toFixed(2),
             }));
-            // 夾角方向視覺化
-            // 取得旋轉軸與角度
-            // const axis = new THREE.Vector3(1, 0, 0); // 預設
-            // let angle = 0;
-            // relativeQuat.normalize();
-            // angle = 2 * Math.acos(Math.min(Math.max(relativeQuat.w, -1), 1));
-            // const s = Math.sqrt(1 - relativeQuat.w * relativeQuat.w);
-            // if (s > 0.0001) {
-            //     axis.set(
-            //         relativeQuat.x / s,
-            //         relativeQuat.y / s,
-            //         relativeQuat.z / s
-            //     );
-            // }
-            // // 箭頭起點設在 sel 關節
-            // const start = sel.getWorldPosition(new THREE.Vector3());
-            // // 箭頭長度與方向
-            // const length = 40; // 可依需求調整
-            // const dir = axis.clone().normalize();
-            //  // 只建立一次 ArrowHelper
-            // if (!scene.userData.angleArrowHelper) {
-            //     scene.userData.angleArrowHelper = new THREE.ArrowHelper(
-            //         dir, start, length, 0x00ff00, 10, 5
-            //     );
-            //     scene.add(scene.userData.angleArrowHelper);
-            // } else {
-            //     const angleArrowHelper = scene.userData.angleArrowHelper;
-            //     if (angleArrowHelper && !scene.children.includes(angleArrowHelper)) {
-            //         scene.add(angleArrowHelper);
-            //     }
-            //     angleArrowHelper.position.copy(start);
-            //     angleArrowHelper.setDirection(dir);
-            //     angleArrowHelper.setLength(length, 10, 5);
-            //     angleArrowHelper.setColor(0x00ff00);
-            //     angleArrowHelper.visible = angle > 0.01;
-            // }
         }
-        // 相對關節距離
+        
         if (sel && compared) {
             jointDistance = sel.getWorldPosition(new THREE.Vector3()).distanceTo(compared.getWorldPosition(new THREE.Vector3()));
             onSetCurrentFrameData(prev => ({

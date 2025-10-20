@@ -1,11 +1,11 @@
 // server/routes/annotations.js
 const express = require('express');
 const router = express.Router();
-const Annotations = require('../mongodb/models/Annotations');
-const { uploadMotionFiles } = require('../middleware/upload');
+const { Annotations } = require('../mongodb/models');
+const { auth } = require('../middleware/auth');
 
 // 創建標注
-router.post('/', uploadMotionFiles, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const {
       sessionId,
@@ -33,7 +33,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
       text,
       category: category || 'general',
       color: color || '#00ff00',
-      userId: req.user?.id || null
+      userId: req.user?._id
     });
 
     await annotation.save();
@@ -55,7 +55,7 @@ router.post('/', uploadMotionFiles, async (req, res) => {
 });
 
 // 獲取指定的所有標注
-router.get('/:sessionId', async (req, res) => {
+router.get('/:sessionId', auth, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { frameNumber, jointName } = req.query;
@@ -89,7 +89,7 @@ router.get('/:sessionId', async (req, res) => {
 });
 
 // 更新標注
-router.put('/:annotationId', async (req, res) => {
+router.put('/:annotationId', auth, async (req, res) => {
   try {
     const { annotationId } = req.params;
     const { text } = req.body;
@@ -125,7 +125,7 @@ router.put('/:annotationId', async (req, res) => {
 });
 
 // 刪除標注
-router.delete('/:annotationId', async (req, res) => {
+router.delete('/:annotationId', auth, async (req, res) => {
   try {
     const { annotationId } = req.params;
 
@@ -156,7 +156,7 @@ router.delete('/:annotationId', async (req, res) => {
 });
 
 // 批量刪除標注
-router.delete('/:sessionId/batch', async (req, res) => {
+router.delete('/:sessionId/batch', auth, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { annotationIds } = req.body;
